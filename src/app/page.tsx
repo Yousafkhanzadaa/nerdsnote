@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Shield, FileText as FileTextIcon, BookOpen, Info, ExternalLink } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Shield, FileText as FileTextIcon, BookOpen, Info, ExternalLink, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Note {
@@ -25,6 +25,7 @@ export default function NerdsNote() {
   const [isDistractFree, setIsDistractFree] = useState(false)
   const [fontSize, setFontSize] = useState(16)
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Load notes from localStorage on mount
@@ -184,11 +185,20 @@ export default function NerdsNote() {
         <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-4">
+              {/* Mobile hamburger menu button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                className="md:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
               <div className="flex items-center gap-2">
                 <FileText className="h-6 w-6 text-primary" />
                 <h1 className="text-xl font-bold text-primary">NerdsNote</h1>
               </div>
-              <div className="relative">
+              <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search-input"
@@ -230,12 +240,52 @@ export default function NerdsNote() {
       )}
 
       <div className="flex h-[calc(100vh-73px)]">
+        {/* Mobile Overlay */}
+        {!isDistractFree && isMobileSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
         {!isDistractFree && (
-          <aside className="w-80 border-r border-border bg-sidebar/30 flex flex-col">
+          <aside className={cn(
+            "w-80 border-r border-border bg-sidebar flex flex-col transition-transform duration-300",
+            "md:translate-x-0 md:static md:z-auto md:h-full",
+            isMobileSidebarOpen
+              ? "fixed inset-y-0 left-0 z-50 translate-x-0 h-screen"
+              : "fixed inset-y-0 left-0 z-50 -translate-x-full h-screen"
+          )}>
             <div className="p-4 border-b border-sidebar-border">
+              {/* Mobile close button */}
+              <div className="flex items-center justify-between mb-4 md:hidden">
+                <h2 className="text-lg font-semibold">Notes</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Mobile search bar */}
+              <div className="relative mb-4 md:hidden">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search notes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
               <div className="flex gap-2">
-                <Button onClick={createNewNote} size="sm" className="flex-1">
+                <Button onClick={() => {
+                  createNewNote()
+                  setIsMobileSidebarOpen(false)
+                }} size="sm" className="flex-1">
                   <Plus className="h-4 w-4 mr-2" />
                   New Note
                 </Button>
@@ -265,7 +315,10 @@ export default function NerdsNote() {
                         "group p-3 cursor-pointer transition-colors hover:bg-accent/50",
                         activeNoteId === note.id && "bg-accent text-accent-foreground",
                       )}
-                      onClick={() => setActiveNoteId(note.id)}
+                      onClick={() => {
+                        setActiveNoteId(note.id)
+                        setIsMobileSidebarOpen(false)
+                      }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
