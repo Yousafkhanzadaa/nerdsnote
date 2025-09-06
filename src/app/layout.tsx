@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
@@ -56,7 +56,10 @@ export const metadata: Metadata = {
       type: "image/png",
     }
   ],
-  themeColor: "#ffffff"
+}
+
+export const viewport: Viewport = {
+  themeColor: "#ffffff",
 }
 
 export default function RootLayout({
