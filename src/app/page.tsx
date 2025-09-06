@@ -301,7 +301,7 @@ export default function NerdsNote() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto scrollbar-theme">
               {filteredNotes.length === 0 ? (
                 <div className="p-4 text-center text-muted-foreground">
                   {searchQuery ? "No notes found" : "No notes yet"}
@@ -349,7 +349,7 @@ export default function NerdsNote() {
         )}
 
         {/* Main Editor */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {activeNote ? (
             <>
               {!isDistractFree && (
@@ -363,14 +363,14 @@ export default function NerdsNote() {
                 </div>
               )}
 
-              <div className="flex-1 p-4">
+              <div className="flex-1 p-4 min-h-0 overflow-hidden">
                 <Textarea
                   ref={textareaRef}
                   value={activeNote.content}
                   onChange={(e) => updateNote(activeNote.id, { content: e.target.value })}
                   placeholder="Start typing your notes here..."
                   className={cn(
-                    "w-full h-full resize-none border-none bg-transparent focus-visible:ring-0 font-mono leading-relaxed",
+                    "w-full h-full resize-none border-none bg-transparent focus-visible:ring-0 font-mono leading-relaxed overflow-y-auto scrollbar-theme",
                     isDistractFree && "p-8",
                   )}
                   style={{ fontSize: `${fontSize}px` }}
