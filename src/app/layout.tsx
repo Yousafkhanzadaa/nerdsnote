@@ -56,6 +56,23 @@ export const metadata: Metadata = {
       type: "image/png",
     }
   ],
+  other: {
+    "application/ld+json": JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "NerdsNote",
+      "applicationCategory": "Productivity",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "Free online notepad for distraction-free note taking. Private, fast, and offline-capable.",
+      "url": "https://nerdsnote.com",
+      "image": "https://nerdsnote.com/apple-icon.png"
+    })
+  }
 }
 
 export const viewport: Viewport = {
@@ -69,6 +86,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="alternate" hrefLang="en" href="https://nerdsnote.com/" />
+      </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
         <Analytics />

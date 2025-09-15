@@ -381,8 +381,8 @@ export default function NerdsNote() {
             <div className="flex-1 flex items-center justify-center text-center">
               <div>
                 <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h2 className="text-xl font-medium text-muted-foreground mb-2">Welcome to NerdsNote</h2>
-                <p className="text-muted-foreground mb-4">Create a new note to get started</p>
+                <h2 className="text-xl font-medium text-muted-foreground mb-2">Welcome to NerdsNote: Free Online Notepad for Note Taking</h2>
+                <p className="text-muted-foreground mb-4">Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.</p>
                 <Button onClick={createNewNote}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Your First Note
@@ -399,7 +399,7 @@ export default function NerdsNote() {
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
-              <span className="font-medium">Privacy Policy, Terms & Tutorials</span>
+              <span className="font-medium">Privacy Policy, Terms & Tutorials for Online Notepad</span>
             </div>
           </div>
 
@@ -408,7 +408,7 @@ export default function NerdsNote() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Privacy Policy</h3>
+                <h3 className="text-lg font-semibold">Privacy Policy for NerdsNote Online Notepad</h3>
               </div>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p><strong>Data Storage:</strong> All your notes are stored locally in your browser&apos;s localStorage. We don&apos;t collect, store, or transmit any of your data to our servers.</p>
@@ -422,7 +422,7 @@ export default function NerdsNote() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileTextIcon className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Terms and Conditions</h3>
+                <h3 className="text-lg font-semibold">Terms and Conditions for Free Note Taking App</h3>
               </div>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p><strong>Use at Your Own Risk:</strong> This application is provided &quot;as is&quot; without any warranties. Use it at your own discretion.</p>
@@ -436,7 +436,7 @@ export default function NerdsNote() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <BookOpen className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">How to Use NerdsNote</h3>
+                <h3 className="text-lg font-semibold">How to Use NerdsNote Online Notepad for Note Taking</h3>
               </div>
               <div className="text-sm text-muted-foreground space-y-3">
                 <div>
@@ -459,6 +459,8 @@ export default function NerdsNote() {
                   <p>• <strong>Font size:</strong> Adjust text size with A+ and A- buttons</p>
                   <p>• <strong>Export:</strong> Download your notes as text files</p>
                   <p>• <strong>Import:</strong> Upload text files to create new notes</p>
+                  {/* Add link here */}
+                  <p className="mt-2"><a href="/features" className="text-primary underline">See all features</a></p>
                 </div>
 
                 <div>
@@ -475,12 +477,25 @@ export default function NerdsNote() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Info className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">About NerdsNote</h3>
+                <h3 className="text-lg font-semibold">About NerdsNote: Free Online Notepad and Note Taking App</h3>
               </div>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p><strong>NerdsNote</strong> is a fast, privacy‑first online notepad built for developers, writers, and anyone who needs a distraction‑free place to jot ideas. It runs in the browser, requires no account, and saves notes locally so your writing remains on your device.</p>
                 <p>Designed for speed and clarity, NerdsNote supports dark mode, offline use, keyboard shortcuts, quick search, import/export, and adjustable font size for long writing sessions.</p>
                 <p>Built with a minimal UI so you can focus on what matters most: your words.</p>
+                {/* Add social buttons here */}
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`https://twitter.com/intent/tweet?text=Check out NerdsNote - a free online notepad!&url=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
+                      Share on Twitter
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`https://www.facebook.com/sharer/sharer.php?u=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
+                      Share on Facebook
+                    </a>
+                  </Button>
+                </div>
               </div>
             </Card>
 
@@ -488,7 +503,7 @@ export default function NerdsNote() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileTextIcon className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Built by Khueon Studios</h3>
+                <h3 className="text-lg font-semibold">Built by Khueon Studios - Creators of Online Notepad Tools</h3>
               </div>
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>This project is crafted and maintained by <a href="https://www.khueonstudios.com" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Khueon Studios</a>. We create clean, performant, and user‑friendly tools for the web.</p>
@@ -500,7 +515,7 @@ export default function NerdsNote() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <BookOpen className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Free Online Notepad for Distraction‑Free Writing</h3>
+                <h3 className="text-lg font-semibold">Free Online Notepad for Distraction‑Free Note Taking</h3>
               </div>
               <div className="text-sm text-muted-foreground space-y-3">
                 <p>NerdsNote is a free online notepad and minimal note‑taking app. Write instantly in your browser with auto‑save, no sign‑up, and no ads. It is perfect for quick notes, drafting blog posts, code snippets, and study plans.</p>
@@ -519,7 +534,7 @@ export default function NerdsNote() {
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileTextIcon className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">Frequently Asked Questions</h3>
+                <h3 className="text-lg font-semibold">Frequently Asked Questions about Online Notepad and Note Taking</h3>
               </div>
               <div className="text-sm text-muted-foreground space-y-3">
                 <div>
@@ -631,6 +646,100 @@ export default function NerdsNote() {
           </Card>
         </div>
       )}
+
+      {/* Add FAQ Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is NerdsNote free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. NerdsNote is completely free to use and does not require an account."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Where are my notes stored?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "All notes are stored locally in your browser using localStorage. Clearing browser data will remove them, so export important notes regularly."
+                }
+              },
+              // Add the rest of the FAQs similarly
+              {
+                "@type": "Question",
+                "name": "Do I need an internet connection?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. After the first load, NerdsNote works offline in most modern browsers."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I export a note?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Click the Download button to save the active note as a .txt file."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I import a .txt file?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Use the Upload button and choose a .txt file. It will create a new note using the file name."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does NerdsNote support Markdown?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "NerdsNote is plain text. You can write Markdown syntax and export as .txt for use elsewhere."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I change the font size or theme?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Use A+ / A- to adjust text size and the Sun/Moon toggle to switch themes."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is there cloud sync?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Not yet. All notes are stored locally on your device. Export notes to create backups."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which browsers are supported?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "NerdsNote supports recent versions of Chrome, Edge, Firefox, and Safari."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Who built NerdsNote?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "NerdsNote is built by Khueon Studios. Visit khueonstudios.com to learn more."
+                }
+              }
+            ]
+          })
+        }}
+      />
     </div>
   )
 }
