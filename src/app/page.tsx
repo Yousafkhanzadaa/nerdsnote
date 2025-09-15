@@ -459,6 +459,8 @@ export default function NerdsNote() {
                   <p>• <strong>Font size:</strong> Adjust text size with A+ and A- buttons</p>
                   <p>• <strong>Export:</strong> Download your notes as text files</p>
                   <p>• <strong>Import:</strong> Upload text files to create new notes</p>
+                  {/* Add link here */}
+                  <p className="mt-2"><a href="/features" className="text-primary underline">See all features</a></p>
                 </div>
 
                 <div>
@@ -481,6 +483,19 @@ export default function NerdsNote() {
                 <p><strong>NerdsNote</strong> is a fast, privacy‑first online notepad built for developers, writers, and anyone who needs a distraction‑free place to jot ideas. It runs in the browser, requires no account, and saves notes locally so your writing remains on your device.</p>
                 <p>Designed for speed and clarity, NerdsNote supports dark mode, offline use, keyboard shortcuts, quick search, import/export, and adjustable font size for long writing sessions.</p>
                 <p>Built with a minimal UI so you can focus on what matters most: your words.</p>
+                {/* Add social buttons here */}
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`https://twitter.com/intent/tweet?text=Check out NerdsNote - a free online notepad!&url=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
+                      Share on Twitter
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`https://www.facebook.com/sharer/sharer.php?u=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
+                      Share on Facebook
+                    </a>
+                  </Button>
+                </div>
               </div>
             </Card>
 
