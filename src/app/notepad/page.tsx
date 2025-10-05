@@ -239,7 +239,10 @@ export default function NerdsNote() {
         </header>
       )}
 
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className={cn(
+        "flex",
+        isDistractFree ? "h-screen" : "h-[calc(100vh-73px)]"
+      )}>
         {/* Mobile Overlay */}
         {!isDistractFree && isMobileSidebarOpen && (
           <div
@@ -395,7 +398,7 @@ export default function NerdsNote() {
           </main>
 
           {/* Status Bar - Always visible at bottom */}
-          {!isDistractFree && activeNote && (
+          {activeNote && (
             <footer className="border-t border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground flex justify-between items-center flex-shrink-0">
               <div className="flex gap-4">
                 <span>Words: {activeNote.content.split(/\s+/).filter(Boolean).length}</span>
