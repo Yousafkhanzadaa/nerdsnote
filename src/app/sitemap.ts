@@ -10,7 +10,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
-    // Add new entry
+    {
+      url: `${siteUrl}/notepad`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
     {
       url: `${siteUrl}/features`,
       lastModified: now,
