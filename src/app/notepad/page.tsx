@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Shield, FileText as FileTextIcon, BookOpen, Info, ExternalLink, Menu, X } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Shield, FileText as FileTextIcon, BookOpen, Info, ExternalLink, Menu, X, Share2 } from "lucide-react"
+import { ShareDialog } from "@/components/share-dialog"
 import { cn } from "@/lib/utils"
 
 interface Note {
@@ -26,6 +27,7 @@ export default function NerdsNote() {
   const [fontSize, setFontSize] = useState(16)
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Load notes from localStorage on mount
@@ -228,6 +230,12 @@ export default function NerdsNote() {
               >
                 A+
               </Button>
+              <div className="w-px h-4 bg-border mx-1" />
+              <Button variant="ghost" size="sm" onClick={() => setIsShareDialogOpen(true)} className="text-primary font-medium">
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+              <div className="w-px h-4 bg-border mx-1" />
               <Button variant="ghost" size="sm" onClick={() => setIsDistractFree(!isDistractFree)}>
                 {isDistractFree ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
@@ -300,6 +308,12 @@ export default function NerdsNote() {
                     <Upload className="h-4 w-4" />
                     <input type="file" accept=".txt,.md" onChange={importFile} className="hidden" />
                   </label>
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  setIsMobileSidebarOpen(false)
+                  setIsShareDialogOpen(true)
+                }}>
+                  <Share2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -427,6 +441,13 @@ export default function NerdsNote() {
         </Button>
       )}
 
+
+      {/* Share Dialog */}
+      <ShareDialog
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+        activeNote={activeNote}
+      />
 
       {/* Delete Confirmation Dialog */}
       {noteToDelete && (
