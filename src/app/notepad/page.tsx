@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Shield, FileText as FileTextIcon, BookOpen, Info, ExternalLink, Menu, X, Share2 } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Shield, FileText as FileTextIcon, BookOpen, Info, ExternalLink, Menu, X, Share2, MessageSquare } from "lucide-react"
 import { ShareDialog } from "@/components/share-dialog"
+import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 
 interface Note {
@@ -28,6 +29,7 @@ export default function NerdsNote() {
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Load notes from localStorage on mount
@@ -210,6 +212,10 @@ export default function NerdsNote() {
                   className="pl-10 w-64"
                 />
               </div>
+              <Button variant="ghost" size="sm" onClick={() => setIsFeedbackDialogOpen(true)} className="hidden sm:flex">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Feedback
+              </Button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -447,6 +453,12 @@ export default function NerdsNote() {
         isOpen={isShareDialogOpen}
         onClose={() => setIsShareDialogOpen(false)}
         activeNote={activeNote}
+      />
+
+      {/* Feedback Dialog */}
+      <FeedbackDialog
+        isOpen={isFeedbackDialogOpen}
+        onClose={() => setIsFeedbackDialogOpen(false)}
       />
 
       {/* Delete Confirmation Dialog */}
