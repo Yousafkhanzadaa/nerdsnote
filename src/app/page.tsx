@@ -421,32 +421,6 @@ export default function HomePage() {
             </p>
         </div>
       </footer>
-
-      {/* Schema Data */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "SoftwareApplication",
-            "name": "NerdsNote",
-            "applicationCategory": "ProductivityApplication",
-            "operatingSystem": "Web Browser",
-            "offers": {
-              "@type": "Offer",
-              "price": "0",
-              "priceCurrency": "USD"
-            },
-            "description": "Free, private, distraction-free online notepad. Auto-saves to your browser.",
-            "featureList": "Auto-save, Offline mode, Dark mode, File export, Local storage",
-            "author": {
-              "@type": "Organization",
-              "name": "Khueon Studios",
-              "url": "https://www.khueonstudios.com"
-            }
-          })
-        }}
-      />
     </div>
   )
 }

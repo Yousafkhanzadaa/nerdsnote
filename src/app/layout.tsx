@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   title: "NerdsNote — Free Online Notepad | Distraction‑Free, Private, Fast",
   description:
     "NerdsNote is a free online notepad for distraction‑free writing. No login, no ads. Auto‑save to your device, dark mode, import/export, search, and offline support.",
-  generator: "v0.app",
   keywords:
     "free online notepad, distraction-free writing app, private notes, browser notepad, localStorage notes, no login notes, offline notepad, minimal note-taking app, developer notepad, quick notes",
   metadataBase: new URL("https://nerdsnote.com"),
@@ -61,14 +60,20 @@ export const metadata: Metadata = {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "NerdsNote",
-      "applicationCategory": "Productivity",
-      "operatingSystem": "Web",
+      "applicationCategory": "ProductivityApplication",
+      "operatingSystem": "Web Browser",
       "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD"
       },
-      "description": "Free online notepad for distraction-free note taking. Private, fast, and offline-capable.",
+      "description": "Free, private, distraction-free online notepad. Auto-saves to your browser.",
+      "featureList": "Auto-save, Offline mode, Dark mode, File export, Local storage, Distraction-free mode",
+      "author": {
+        "@type": "Organization",
+        "name": "Khueon Studios",
+        "url": "https://www.khueonstudios.com"
+      },
       "url": "https://nerdsnote.com",
       "image": "https://nerdsnote.com/apple-icon.png"
     })
