@@ -162,3 +162,25 @@
     background-color: oklch(0.7 0 0);
   }
 }
+
+/* TipTap Editor Overrides for tighter spacing */
+.ProseMirror p {
+  margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.ProseMirror ul, 
+.ProseMirror ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1.5rem;
+}
+
+.ProseMirror li {
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+}
+
+.ProseMirror li p {
+  margin: 0;
+}
