@@ -8,6 +8,11 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Shield, FileText as FileTextIcon, BookOpen, Info, ExternalLink, Menu, X, Share2, MessageSquare } from "lucide-react"
+import { useEditor, EditorContent } from "@tiptap/react"
+import StarterKit from "@tiptap/starter-kit"
+import Underline from "@tiptap/extension-underline"
+import CharacterCount from "@tiptap/extension-character-count"
+import { EditorToolbar } from "@/components/editor-toolbar"
 import { ShareDialog } from "@/components/share-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
@@ -30,7 +35,21 @@ export default function NerdsNote() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const editor = useEditor({
+    extensions: [StarterKit, Underline, CharacterCount],
+    immediatelyRender: false,
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-none h-full min-h-[50vh] px-4 py-2",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      if (activeNoteId) {
+        updateNote(activeNoteId, { content: editor.getHTML() })
+      }
+    },
+  })
 
   // Load notes from localStorage on mount
   useEffect(() => {
@@ -85,6 +104,31 @@ export default function NerdsNote() {
 
   const activeNote = notes.find((note) => note.id === activeNoteId)
 
+  // Sync editor content when active note changes
+  useEffect(() => {
+    if (editor && activeNote) {
+      const currentContent = editor.getHTML()
+      if (currentContent !== activeNote.content) {
+        // Check if content matches to avoid cursor jumps
+        // For new notes or switched notes, set content
+        // For text updates triggered by editor, we don't want to setContent
+        // We can compare using a simpler check or just trust that onUpdate handles the state
+        // and we only setContent if the ID changed or if it's a fresh load.
+        // Best approach: only setContent if the editor content is drastically different 
+        // or we can track 'lastActiveNoteId'.
+      }
+    }
+  }, [activeNoteId, editor]) // This is tricky. 
+
+  // Better approach:
+  const prevActiveNoteIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (editor && activeNote && activeNote.id !== prevActiveNoteIdRef.current) {
+      editor.commands.setContent(activeNote.content)
+      prevActiveNoteIdRef.current = activeNote.id
+    }
+  }, [activeNoteId, activeNote, editor])
+
   const createNewNote = () => {
     const newNote: Note = {
       id: Date.now().toString(),
@@ -114,7 +158,18 @@ export default function NerdsNote() {
 
   const exportNote = () => {
     if (!activeNote) return
-    const blob = new Blob([activeNote.content], { type: "text/plain" })
+    // Use editor to get plain text if available, otherwise strip HTML
+    let content = activeNote.content
+    if (editor) {
+      content = editor.getText()
+    } else {
+      // Fallback: simple strip tags (not perfect but works for basic)
+      const tmp = document.createElement("DIV")
+      tmp.innerHTML = content
+      content = tmp.textContent || ""
+    }
+    
+    const blob = new Blob([content], { type: "text/plain" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -130,10 +185,14 @@ export default function NerdsNote() {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
+      // Import as plain text, TipTap will handle it (wrap in <p>)
+      // We can create the note with this content.
+      // When we load it into editor, it will be converted to HTML.
+      // To ensure consistency, we might want to wrap it now, but letting TipTap handle it on load is safer.
       const newNote: Note = {
         id: Date.now().toString(),
         title: file.name.replace(/\.[^/.]+$/, ""),
-        content,
+        content: content.split('\n').map(line => `<p>${line}</p>`).join(''), // Basic conversion to preserve newlines
         lastModified: new Date(),
       }
       setNotes((prev) => [newNote, ...prev])
@@ -388,18 +447,19 @@ export default function NerdsNote() {
                   </div>
                 )}
 
-                <div className="flex-1 p-4 min-h-0 overflow-hidden">
-                  <Textarea
-                    ref={textareaRef}
-                    value={activeNote.content}
-                    onChange={(e) => updateNote(activeNote.id, { content: e.target.value })}
-                    placeholder="Start typing your notes here..."
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <EditorToolbar editor={editor} />
+                  <div 
                     className={cn(
-                      "w-full h-full resize-none border-none bg-transparent focus-visible:ring-0 font-mono leading-relaxed overflow-y-auto scrollbar-theme",
-                      isDistractFree && "p-8",
+                      "flex-1 overflow-y-auto scrollbar-theme bg-transparent",
+                      isDistractFree && "p-8 max-w-3xl mx-auto w-full",
+                      !isDistractFree && "p-0"
                     )}
+                    onClick={() => editor?.chain().focus().run()}
                     style={{ fontSize: `${fontSize}px` }}
-                  />
+                  >
+                    <EditorContent editor={editor} className="h-full min-h-[50vh]" />
+                  </div>
                 </div>
               </>
             ) : (
@@ -418,11 +478,11 @@ export default function NerdsNote() {
           </main>
 
           {/* Status Bar - Always visible at bottom */}
-          {activeNote && (
+          {activeNote && editor && (
             <footer className="border-t border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground flex justify-between items-center flex-shrink-0">
               <div className="flex gap-4">
-                <span>Words: {activeNote.content.split(/\s+/).filter(Boolean).length}</span>
-                <span>Characters: {activeNote.content.length}</span>
+                <span>Words: {editor.storage.characterCount?.words() || 0}</span>
+                <span>Characters: {editor.storage.characterCount?.characters() || 0}</span>
               </div>
               <div className="flex gap-4">
                 <span>Auto-saved</span>
