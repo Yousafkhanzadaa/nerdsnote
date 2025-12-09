@@ -31,7 +31,7 @@ export default function HomePage() {
       </header>
 
       <main className="flex-1">
-      {/* Hero Section */}
+        {/* Hero Section */}
         <section className="relative pt-20 pb-32 overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
@@ -43,34 +43,34 @@ export default function HomePage() {
               <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
               No Login Required • Free Forever
             </div>
-            
+
             <h1 className="max-w-4xl mx-auto text-5xl md:text-7xl font-bold tracking-tight mb-8 bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent pb-2">
-              The Distraction‑Free <br/> Online Notepad.
-          </h1>
-            
+              The Distraction‑Free <br /> Online Notepad.
+            </h1>
+
             <p className="max-w-2xl mx-auto text-xl text-muted-foreground mb-10 leading-relaxed">
-              Write immediately in your browser. Auto-saving, offline-capable, and privacy-first. 
+              Write immediately in your browser. Auto-saving, offline-capable, and privacy-first.
               Just you and your words.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            <Link href="/notepad">
+              <Link href="/notepad">
                 <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all hover:-translate-y-1">
                   Start Writing
                   <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
-            </Link>
-            <Link href="/features">
+                </Button>
+              </Link>
+              <Link href="/features">
                 <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2 hover:bg-muted/50">
                   See Features
-              </Button>
-            </Link>
-          </div>
+                </Button>
+              </Link>
+            </div>
 
             {/* Browser Mockup */}
             <div className="relative max-w-5xl mx-auto rounded-xl border border-border bg-background shadow-2xl overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              
+
               {/* Fake Browser Toolbar */}
               <div className="bg-muted/30 border-b border-border px-4 py-3 flex items-center gap-2">
                 <div className="flex gap-1.5">
@@ -80,7 +80,7 @@ export default function HomePage() {
                 </div>
                 <div className="ml-4 flex-1 max-w-sm mx-auto bg-background/50 rounded-md h-6 w-full"></div>
               </div>
-              
+
               {/* Fake Content */}
               <div className="p-8 md:p-12 text-left min-h-[300px] bg-background">
                 <div className="h-8 w-3/4 bg-foreground/10 rounded mb-6 animate-pulse"></div>
@@ -95,14 +95,14 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Features Grid */}
+        {/* Features Grid */}
         <section className="py-24 bg-muted/30">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold mb-4">Everything you need,<br/>nothing you don't.</h2>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4">Everything you need,<br />nothing you don't.</h2>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
                 Built for speed and focus. We removed the clutter so you can focus on the content.
               </p>
@@ -148,12 +148,12 @@ export default function HomePage() {
                   <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
                   <p className="text-muted-foreground leading-relaxed">
                     {feature.description}
-              </p>
-            </Card>
+                  </p>
+                </Card>
               ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
         {/* How it works */}
         <section className="py-24 border-y border-border/40">
@@ -162,7 +162,7 @@ export default function HomePage() {
             <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto relative">
               {/* Connecting Line (Desktop) */}
               <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-border to-transparent -z-10"></div>
-              
+
               <div className="text-center">
                 <div className="w-24 h-24 bg-background border-4 border-muted rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
                   <span className="text-4xl font-bold text-muted-foreground/50">1</span>
@@ -191,13 +191,13 @@ export default function HomePage() {
         {/* FAQ & Info Grid */}
         <section className="py-24 bg-background border-t border-border/40">
           <div className="container mx-auto px-4 max-w-6xl">
-            
+
             {/* Tutorials / How to Use */}
             <div className="mb-20">
               <div className="flex items-center gap-3 mb-8 justify-center">
                 <BookOpen className="h-8 w-8 text-primary" />
                 <h2 className="text-3xl font-bold text-center">How to Use NerdsNote</h2>
-                </div>
+              </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <Card className="p-6 border-border/60 shadow-sm">
@@ -264,7 +264,7 @@ export default function HomePage() {
 
             {/* Main Content Grid: FAQ + About */}
             <div className="grid lg:grid-cols-3 gap-12 mb-20">
-              
+
               {/* FAQ Section (Span 2) */}
               <div className="lg:col-span-2">
                 <h3 className="text-2xl font-bold mb-8 flex items-center gap-2">
@@ -306,18 +306,18 @@ export default function HomePage() {
                     </p>
                     <div className="flex flex-col gap-2 pt-2">
                       <Button variant="outline" size="sm" asChild className="w-full justify-start">
-                    <a href={`https://twitter.com/intent/tweet?text=Check out NerdsNote - a free online notepad!&url=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
-                      Share on Twitter
-                    </a>
-                  </Button>
+                        <a href={`https://twitter.com/intent/tweet?text=Check out NerdsNote - a free online notepad!&url=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
+                          Share on Twitter
+                        </a>
+                      </Button>
                       <Button variant="outline" size="sm" asChild className="w-full justify-start">
-                    <a href={`https://www.facebook.com/sharer/sharer.php?u=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
-                      Share on Facebook
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </Card>
+                        <a href={`https://www.facebook.com/sharer/sharer.php?u=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
+                          Share on Facebook
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
 
                 {/* SEO Card */}
                 <Card className="p-6 border-border/60">
@@ -332,16 +332,16 @@ export default function HomePage() {
                     <p className="text-xs">
                       free online notepad, distraction‑free writing app, browser‑based notes, local notes, privacy‑friendly notepad, simple notepad for developers.
                     </p>
+                  </div>
+                </Card>
               </div>
-            </Card>
-              </div>
-                </div>
+            </div>
 
             {/* Legal Section */}
             <div className="grid md:grid-cols-2 gap-8 border-t border-border/40 pt-16">
-              
+
               {/* Privacy Policy */}
-                <div>
+              <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Shield className="h-5 w-5 text-primary" />
                   <h3 className="text-lg font-semibold">Privacy Policy</h3>
@@ -360,10 +360,10 @@ export default function HomePage() {
                     <strong className="text-foreground">Browser Storage:</strong> Notes are saved in your browser's localStorage. Clearing your browser data will remove your notes.
                   </p>
                 </div>
-                </div>
+              </div>
 
               {/* Terms and Conditions */}
-                <div>
+              <div>
                 <div className="flex items-center gap-2 mb-4">
                   <FileText className="h-5 w-5 text-primary" />
                   <h3 className="text-lg font-semibold">Terms and Conditions</h3>
@@ -384,8 +384,8 @@ export default function HomePage() {
                 </div>
               </div>
 
-              </div>
-              </div>
+            </div>
+          </div>
         </section>
 
         {/* Built By Section (Sub-footer) */}
@@ -398,12 +398,12 @@ export default function HomePage() {
               </p>
               <div className="flex justify-center">
                 <a href="https://www.khueonstudios.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-                   Visit khueonstudios.com <ExternalLink className="h-4 w-4" />
+                  Visit khueonstudios.com <ExternalLink className="h-4 w-4" />
                 </a>
               </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
       </main>
 
       <footer className="border-t border-border bg-background py-12">
@@ -411,14 +411,14 @@ export default function HomePage() {
           <div className="flex items-center justify-center gap-2 mb-4">
             <FileText className="h-5 w-5 text-primary opacity-50" />
             <span className="font-semibold text-foreground">NerdsNote</span>
-        </div>
+          </div>
           <p className="mb-4">&copy; {new Date().getFullYear()} NerdsNote. All rights reserved.</p>
           <p>
-              A project by{" "}
+            A project by{" "}
             <a href="https://www.khueonstudios.com" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 hover:decoration-primary underline-offset-4 transition-all">
-                Khueon Studios
-              </a>
-            </p>
+              Khueon Studios
+            </a>
+          </p>
         </div>
       </footer>
     </div>
