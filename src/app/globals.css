@@ -164,9 +164,15 @@
 }
 
 /* TipTap Editor Overrides for tighter spacing */
+.ProseMirror {
+  font-size: inherit !important;
+  line-height: 1.5 !important;
+}
+
 .ProseMirror p {
   margin-bottom: 0.5rem;
   margin-top: 0.5rem;
+  line-height: 1.5;
 }
 
 .ProseMirror ul, 

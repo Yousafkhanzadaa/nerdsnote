@@ -39,7 +39,7 @@ export default function NotepadClient() {
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: "prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-none h-full min-h-[50vh] px-4 py-2",
+        class: "prose dark:prose-invert focus:outline-none max-w-none h-full min-h-[50vh] px-4 py-2",
       },
     },
     onUpdate: ({ editor }) => {
