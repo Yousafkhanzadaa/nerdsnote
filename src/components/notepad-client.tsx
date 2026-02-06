@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, Share2, MessageSquare } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, Share2, MessageSquare, Link2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
@@ -12,6 +12,7 @@ import Underline from "@tiptap/extension-underline"
 import CharacterCount from "@tiptap/extension-character-count"
 import { EditorToolbar } from "@/components/editor-toolbar"
 import { ShareDialog } from "@/components/share-dialog"
+import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +33,7 @@ export default function NotepadClient() {
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
 
   const editor = useEditor({
@@ -79,6 +81,32 @@ export default function NotepadClient() {
     if (savedTheme === "dark") {
       setIsDarkMode(true)
       document.documentElement.classList.add("dark")
+    }
+
+    // Handle openShared URL parameter to import shared notes
+    const urlParams = new URLSearchParams(window.location.search)
+    const openSharedSlug = urlParams.get("openShared")
+    if (openSharedSlug) {
+      // Fetch the shared note and create a local copy
+      fetch(`/api/share/${openSharedSlug}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.content) {
+            const importedNote: Note = {
+              id: Date.now().toString(),
+              title: "Imported Note",
+              content: data.content,
+              lastModified: new Date(),
+            }
+            setNotes(prev => [importedNote, ...prev])
+            setActiveNoteId(importedNote.id)
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname)
+          }
+        })
+        .catch(() => {
+          // Failed to fetch shared note, ignore
+        })
     }
   }, [])
 
@@ -278,7 +306,11 @@ export default function NotepadClient() {
                 A+
               </Button>
               <div className="w-px h-4 bg-border mx-1" />
-              <Button variant="ghost" size="sm" onClick={() => setIsShareDialogOpen(true)} className="text-primary font-medium">
+              <Button variant="ghost" size="sm" onClick={() => setIsCreateLinkDialogOpen(true)} className="text-primary font-medium" disabled={!activeNote}>
+                <Link2 className="h-4 w-4 mr-2" />
+                Create Link
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsShareDialogOpen(true)}>
                 <Share2 className="h-4 w-4 mr-2" />
                 Share
               </Button>
@@ -495,6 +527,13 @@ export default function NotepadClient() {
         isOpen={isShareDialogOpen}
         onClose={() => setIsShareDialogOpen(false)}
         activeNote={activeNote}
+      />
+
+      {/* Create Share Link Dialog */}
+      <CreateShareLinkDialog
+        isOpen={isCreateLinkDialogOpen}
+        onClose={() => setIsCreateLinkDialogOpen(false)}
+        noteContent={activeNote ? (editor?.getText() || activeNote.content) : ""}
       />
 
       {/* Feedback Dialog */}
