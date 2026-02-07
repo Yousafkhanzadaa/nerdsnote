@@ -348,16 +348,16 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-4 text-sm text-muted-foreground bg-muted/20 p-6 rounded-xl border border-border/50">
                   <p>
-                    <strong className="text-foreground">Data Storage:</strong> All your notes are stored locally in your browser's localStorage. We don't collect, store, or transmit any of your data to our servers.
+                    <strong className="text-foreground">Data Storage:</strong> All your notes are stored locally in your browser's localStorage. We don't collect, store, or transmit any of your data to our servers unless you explicitly use the Share Links feature.
                   </p>
                   <p>
-                    <strong className="text-foreground">No Tracking:</strong> We don't use cookies, analytics, or any tracking mechanisms. Your privacy is completely protected.
+                    <strong className="text-foreground">Share Links:</strong> When you create a shareable link, your note content is uploaded to our secure servers and stored for 24 hours, after which it is automatically deleted. Anyone with the link can view the note during this period.
                   </p>
                   <p>
-                    <strong className="text-foreground">Local Only:</strong> Your notes remain on your device and are never sent to external servers. You have complete control over your data.
+                    <strong className="text-foreground">No Tracking:</strong> We don't use cookies, analytics, or any tracking mechanisms. We don't track who views shared notes. Your privacy is completely protected.
                   </p>
                   <p>
-                    <strong className="text-foreground">Browser Storage:</strong> Notes are saved in your browser's localStorage. Clearing your browser data will remove your notes.
+                    <strong className="text-foreground">Local Only (Default):</strong> By default, your notes remain on your device and are never sent to external servers. You have complete control over your data.
                   </p>
                 </div>
               </div>
@@ -373,13 +373,16 @@ export default function HomePage() {
                     <strong className="text-foreground">Use at Your Own Risk:</strong> This application is provided "as is" without any warranties. Use it at your own discretion.
                   </p>
                   <p>
+                    <strong className="text-foreground">Share Links:</strong> By using the Share Links feature, you consent to temporarily upload your note content to our servers. Links expire after 24 hours. Do not share sensitive or confidential information.
+                  </p>
+                  <p>
                     <strong className="text-foreground">Data Responsibility:</strong> You are responsible for backing up your notes. We recommend exporting important notes regularly.
                   </p>
                   <p>
-                    <strong className="text-foreground">No Guarantees:</strong> We don't guarantee data persistence. Browser updates, clearing data, or technical issues may result in data loss.
+                    <strong className="text-foreground">No Guarantees:</strong> We don't guarantee data persistence. Browser updates, clearing data, or technical issues may result in data loss. Shared links may expire or become unavailable.
                   </p>
                   <p>
-                    <strong className="text-foreground">Free Service:</strong> This is a free, open-source application. No payment or registration required.
+                    <strong className="text-foreground">Free Service:</strong> This is a free application. No payment or registration required.
                   </p>
                 </div>
               </div>
