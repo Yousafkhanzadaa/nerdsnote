@@ -499,7 +499,7 @@ export default function NotepadClient() {
       <CreateShareLinkDialog
         isOpen={isCreateLinkDialogOpen}
         onClose={() => setIsCreateLinkDialogOpen(false)}
-        noteContent={activeNote ? (editor?.getText() || activeNote.content) : ""}
+        noteContent={activeNote ? (editor?.getHTML() || activeNote.content) : ""}
       />
 
       {/* Feedback Dialog */}

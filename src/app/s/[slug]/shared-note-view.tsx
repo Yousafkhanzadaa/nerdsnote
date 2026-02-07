@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
 import { FileText, ExternalLink, Clock, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,8 +19,24 @@ export default function SharedNoteView({
     expiresAt,
     openInAppUrl,
 }: SharedNoteViewProps) {
+    const [sanitizedContent, setSanitizedContent] = useState("");
     const createdDate = new Date(createdAt);
     const expiresDate = expiresAt ? new Date(expiresAt) : null;
+
+    // Sanitize HTML on client side
+    useEffect(() => {
+        const clean = DOMPurify.sanitize(content, {
+            ALLOWED_TAGS: [
+                "p", "br", "strong", "b", "em", "i", "u", "s", "strike",
+                "h1", "h2", "h3", "h4", "h5", "h6",
+                "ul", "ol", "li",
+                "blockquote", "pre", "code",
+                "a", "span", "div"
+            ],
+            ALLOWED_ATTR: ["href", "target", "rel", "class"],
+        });
+        setSanitizedContent(clean);
+    }, [content]);
 
     const formatDate = (date: Date) => {
         return date.toLocaleDateString("en-US", {
@@ -68,11 +86,24 @@ export default function SharedNoteView({
                     )}
                 </div>
 
-                {/* Note content */}
+                {/* Note content with TipTap-like styling */}
                 <Card className="p-6 bg-card">
-                    <pre
-                        className="whitespace-pre-wrap break-words font-sans text-base leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: content }}
+                    <div
+                        className="prose prose-neutral dark:prose-invert max-w-none
+                            prose-headings:font-semibold prose-headings:text-foreground
+                            prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
+                            prose-p:text-foreground prose-p:leading-relaxed
+                            prose-strong:text-foreground prose-strong:font-bold
+                            prose-em:italic
+                            prose-ul:list-disc prose-ul:pl-6
+                            prose-ol:list-decimal prose-ol:pl-6
+                            prose-li:text-foreground
+                            prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground
+                            prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono
+                            prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
+                            prose-a:text-primary prose-a:underline hover:prose-a:no-underline
+                            [&_u]:underline [&_s]:line-through [&_strike]:line-through"
+                        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                     />
                 </Card>
             </main>

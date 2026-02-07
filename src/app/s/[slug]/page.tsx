@@ -19,16 +19,6 @@ async function getNote(slug: string): Promise<StoredNote | null> {
     }
 }
 
-// Escape HTML entities for safe rendering
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
 // Generate dynamic metadata for OG tags
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
@@ -71,14 +61,13 @@ export default async function SharedNotePage({ params }: PageProps) {
         notFound();
     }
 
-    // Safely escape content for rendering
-    const safeContent = escapeHtml(note.content);
+    // Pass raw HTML content - client component will sanitize it
     const host = process.env.NEXT_PUBLIC_APP_URL || "https://nerdsnote.com";
     const openInAppUrl = `${host}/?openShared=${slug}`;
 
     return (
         <SharedNoteView
-            content={safeContent}
+            content={note.content}
             createdAt={note.createdAt}
             expiresAt={note.expiresAt}
             openInAppUrl={openInAppUrl}
