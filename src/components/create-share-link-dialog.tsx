@@ -27,9 +27,6 @@ type DialogState = "consent" | "loading" | "success" | "error";
 
 const EXPIRY_OPTIONS: { value: ExpiryOption; label: string }[] = [
     { value: "1d", label: "1 day" },
-    { value: "7d", label: "7 days" },
-    { value: "30d", label: "30 days" },
-    { value: "never", label: "Never" },
 ];
 
 export function CreateShareLinkDialog({
@@ -38,7 +35,7 @@ export function CreateShareLinkDialog({
     noteContent,
 }: CreateShareLinkDialogProps) {
     const [state, setState] = useState<DialogState>("consent");
-    const [expiresIn, setExpiresIn] = useState<ExpiryOption>("7d");
+    const [expiresIn] = useState<ExpiryOption>("1d");
     const [shareUrl, setShareUrl] = useState("");
     const [expiresAt, setExpiresAt] = useState<string | null>(null);
     const [error, setError] = useState("");
@@ -153,26 +150,13 @@ export function CreateShareLinkDialog({
                         <div className="space-y-4">
                             <p className="text-muted-foreground text-sm leading-relaxed">
                                 This will upload your note to NerdsNote so anyone with the link can view it.
-                                Notes auto-expire by default (7 days). We won't track readers. Continue?
+                                Links expire after 24 hours. We won't track readers. Continue?
                             </p>
 
-                            {/* Expiry selector */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium flex items-center gap-2">
-                                    <Clock className="h-4 w-4 text-muted-foreground" />
-                                    Link expires in
-                                </label>
-                                <select
-                                    value={expiresIn}
-                                    onChange={(e) => setExpiresIn(e.target.value as ExpiryOption)}
-                                    className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                >
-                                    {EXPIRY_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
+                            {/* Expiry info */}
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
+                                <Clock className="h-4 w-4" />
+                                <span>Link expires in 24 hours</span>
                             </div>
 
                             {/* Actions */}
