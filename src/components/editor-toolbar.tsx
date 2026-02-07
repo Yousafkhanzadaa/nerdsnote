@@ -12,17 +12,33 @@ import {
   Code,
   Heading1,
   Heading2,
+  Minus,
+  Plus,
 } from "lucide-react"
 import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
 
 interface EditorToolbarProps {
   editor: Editor | null
+  fontSize?: number
+  onFontSizeChange?: (size: number) => void
 }
 
-export function EditorToolbar({ editor }: EditorToolbarProps) {
+export function EditorToolbar({ editor, fontSize = 16, onFontSizeChange }: EditorToolbarProps) {
   if (!editor) {
     return null
+  }
+
+  const decreaseFontSize = () => {
+    if (onFontSizeChange && fontSize > 12) {
+      onFontSizeChange(fontSize - 2)
+    }
+  }
+
+  const increaseFontSize = () => {
+    if (onFontSizeChange && fontSize < 24) {
+      onFontSizeChange(fontSize + 2)
+    }
   }
 
   return (
@@ -67,7 +83,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       >
         <Strikethrough className="h-4 w-4" />
       </Button>
-      
+
       <div className="w-px h-4 bg-border mx-1" />
 
       <Button
@@ -154,6 +170,36 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       >
         <Redo className="h-4 w-4" />
       </Button>
+
+      {/* Font Size Controls */}
+      {onFontSizeChange && (
+        <>
+          <div className="w-px h-4 bg-border mx-1" />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={decreaseFontSize}
+              disabled={fontSize <= 12}
+              className="h-8 w-8 p-0"
+              title="Decrease text size"
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <span className="text-xs text-muted-foreground w-10 text-center">{fontSize}px</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={increaseFontSize}
+              disabled={fontSize >= 24}
+              className="h-8 w-8 p-0"
+              title="Increase text size"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

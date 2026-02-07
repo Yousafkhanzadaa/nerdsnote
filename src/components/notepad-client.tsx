@@ -4,14 +4,14 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, Share2, MessageSquare, Link2 } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import CharacterCount from "@tiptap/extension-character-count"
 import { EditorToolbar } from "@/components/editor-toolbar"
-import { ShareDialog } from "@/components/share-dialog"
+
 import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
@@ -32,7 +32,6 @@ export default function NotepadClient() {
   const [fontSize, setFontSize] = useState(16)
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
   const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
 
@@ -288,31 +287,9 @@ export default function NotepadClient() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFontSize((prev) => Math.max(12, prev - 2))}
-                disabled={fontSize <= 12}
-              >
-                A-
-              </Button>
-              <span className="text-sm text-muted-foreground">{fontSize}px</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFontSize((prev) => Math.min(24, prev + 2))}
-                disabled={fontSize >= 24}
-              >
-                A+
-              </Button>
-              <div className="w-px h-4 bg-border mx-1" />
               <Button variant="ghost" size="sm" onClick={() => setIsCreateLinkDialogOpen(true)} className="text-primary font-medium" disabled={!activeNote}>
                 <Link2 className="h-4 w-4 mr-2" />
                 Create Link
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setIsShareDialogOpen(true)}>
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
               </Button>
               <div className="w-px h-4 bg-border mx-1" />
               <Button variant="ghost" size="sm" onClick={() => setIsDistractFree(!isDistractFree)}>
@@ -388,12 +365,6 @@ export default function NotepadClient() {
                     <input type="file" accept=".txt,.md" onChange={importFile} className="hidden" />
                   </label>
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  setIsMobileSidebarOpen(false)
-                  setIsShareDialogOpen(true)
-                }}>
-                  <Share2 className="h-4 w-4" />
-                </Button>
               </div>
             </div>
 
@@ -462,7 +433,7 @@ export default function NotepadClient() {
                 )}
 
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <EditorToolbar editor={editor} />
+                  <EditorToolbar editor={editor} fontSize={fontSize} onFontSizeChange={setFontSize} />
                   <div
                     className={cn(
                       "flex-1 overflow-y-auto scrollbar-theme bg-transparent",
@@ -522,12 +493,7 @@ export default function NotepadClient() {
       )}
 
 
-      {/* Share Dialog */}
-      <ShareDialog
-        isOpen={isShareDialogOpen}
-        onClose={() => setIsShareDialogOpen(false)}
-        activeNote={activeNote}
-      />
+
 
       {/* Create Share Link Dialog */}
       <CreateShareLinkDialog
