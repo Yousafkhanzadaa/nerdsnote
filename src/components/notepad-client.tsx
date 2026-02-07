@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2 } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
@@ -34,6 +34,7 @@ export default function NotepadClient() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
+  const [showAnnouncement, setShowAnnouncement] = useState(false)
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, CharacterCount],
@@ -73,6 +74,13 @@ export default function NotepadClient() {
       }
       setNotes([initialNote])
       setActiveNoteId(initialNote.id)
+    }
+
+    // Check if user has seen the share links announcement (only for existing users)
+    const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-share-feature")
+    if (savedNotes && !hasSeenAnnouncement) {
+      // Only show to existing users (who have saved notes)
+      setShowAnnouncement(true)
     }
 
     // Load theme preference
@@ -533,6 +541,46 @@ export default function NotepadClient() {
                 Delete
               </Button>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Feature Announcement Modal */}
+      {showAnnouncement && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="p-6 max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold">New Feature: Share Links!</h3>
+            </div>
+            <p className="text-muted-foreground mb-4">
+              You can now create shareable links for your notes! Click the <strong>"Create Link"</strong> button in the top bar to generate a public link that expires in 24 hours.
+            </p>
+            <ul className="text-sm text-muted-foreground mb-6 space-y-1.5">
+              <li className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                One-click share links
+              </li>
+              <li className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                Auto-expires in 24 hours
+              </li>
+              <li className="flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-primary" />
+                No login required for readers
+              </li>
+            </ul>
+            <Button
+              className="w-full"
+              onClick={() => {
+                localStorage.setItem("nerds-note-seen-share-feature", "true")
+                setShowAnnouncement(false)
+              }}
+            >
+              Got it!
+            </Button>
           </Card>
         </div>
       )}
