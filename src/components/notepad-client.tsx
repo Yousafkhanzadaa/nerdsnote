@@ -13,6 +13,7 @@ import CharacterCount from "@tiptap/extension-character-count"
 import { EditorToolbar } from "@/components/editor-toolbar"
 
 import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
+import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
@@ -34,6 +35,7 @@ export default function NotepadClient() {
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
+  const [isConnectFolderDialogOpen, setIsConnectFolderDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
   const [showAnnouncement, setShowAnnouncement] = useState(false)
 
@@ -82,8 +84,8 @@ export default function NotepadClient() {
       setActiveNoteId(initialNote.id)
     }
 
-    // Check if user has seen the share links announcement (only for existing users)
-    const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-share-feature")
+    // Check if user has seen the new features announcement
+    const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-v5-features")
     if (savedNotes && !hasSeenAnnouncement) {
       // Only show to existing users (who have saved notes)
       setShowAnnouncement(true)
@@ -541,7 +543,7 @@ export default function NotepadClient() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleConnectDirectory}
+                    onClick={() => setIsConnectFolderDialogOpen(true)}
                     className="w-full text-xs h-8 gap-2 bg-background/50"
                   >
                     <HardDrive className="h-3.5 w-3.5" />
@@ -648,6 +650,13 @@ export default function NotepadClient() {
         onClose={() => setIsFeedbackDialogOpen(false)}
       />
 
+      {/* Connect Folder Dialog */}
+      <ConnectFolderDialog
+        isOpen={isConnectFolderDialogOpen}
+        onClose={() => setIsConnectFolderDialogOpen(false)}
+        onConfirm={handleConnectDirectory}
+      />
+
       {/* Delete Confirmation Dialog */}
       {
         noteToDelete && (
@@ -688,33 +697,48 @@ export default function NotepadClient() {
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold">New Feature: Share Links!</h3>
+                <h3 className="text-lg font-semibold">New Features: Share & Save!</h3>
               </div>
-              <p className="text-muted-foreground mb-4">
-                You can now create shareable links for your notes! Click the <strong>"Create Link"</strong> button in the top bar to generate a public link that expires in 24 hours.
+              <p className="text-sm text-muted-foreground mb-6">
+                We&apos;ve added powerful new features to give you full control over your data.
               </p>
-              <ul className="text-sm text-muted-foreground mb-6 space-y-1.5">
-                <li className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-primary" />
-                  One-click share links
-                </li>
-                <li className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-primary" />
-                  Auto-expires in 24 hours
-                </li>
-                <li className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-primary" />
-                  No login required for readers
-                </li>
-              </ul>
+              <div className="space-y-6 mb-8">
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                  <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
+                    <Link2 className="h-4 w-4" />
+                    Share Links
+                  </h4>
+                  <p className="text-sm text-foreground/80 leading-relaxed mb-2">
+                    Need to share a quick thought? Generate a secure, read-only public link for any note.
+                  </p>
+                  <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
+                    <li>Click <strong>"Create Link"</strong> in the top bar</li>
+                    <li>Links auto-expire in 24 hours</li>
+                  </ul>
+                </div>
+
+                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
+                  <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
+                    <HardDrive className="h-4 w-4" />
+                    Local Folder Storage
+                  </h4>
+                  <p className="text-sm text-foreground/80 leading-relaxed mb-2">
+                    Prevent data loss by connecting a real folder on your device. Your notes will be saved as <strong>.txt</strong> files.
+                  </p>
+                  <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
+                    <li>Click <strong>"Connect Local Folder"</strong> in the sidebar</li>
+                    <li>Files auto-sync instantly</li>
+                  </ul>
+                </div>
+              </div>
               <Button
-                className="w-full"
+                className="w-full font-semibold"
                 onClick={() => {
-                  localStorage.setItem("nerds-note-seen-share-feature", "true")
+                  localStorage.setItem("nerds-note-seen-v5-features", "true")
                   setShowAnnouncement(false)
                 }}
               >
-                Got it!
+                Awesome, Let's Go!
               </Button>
             </Card>
           </div>
