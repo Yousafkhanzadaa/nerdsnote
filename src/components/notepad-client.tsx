@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, Folder, FolderOpen, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
@@ -15,6 +15,7 @@ import { EditorToolbar } from "@/components/editor-toolbar"
 import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
+import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
 
 interface Note {
   id: string
@@ -35,6 +36,11 @@ export default function NotepadClient() {
   const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
   const [showAnnouncement, setShowAnnouncement] = useState(false)
+
+  // File System Storage State
+  const [isFileSystemSupported, setIsFileSystemSupported] = useState(false)
+  const [connectedDirectoryName, setConnectedDirectoryName] = useState<string | null>(null)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, CharacterCount],
@@ -117,6 +123,64 @@ export default function NotepadClient() {
     }
   }, [])
 
+  // Initialize File System Storage
+  useEffect(() => {
+    if (FileSystemStorage.isSupported()) {
+      setIsFileSystemSupported(true)
+      fileSystemStorage.loadHandle().then(async (success) => {
+        if (success) {
+          const name = fileSystemStorage.getDirectoryName()
+          setConnectedDirectoryName(name)
+          // If connected, load notes from FS
+          const fsNotes = await fileSystemStorage.loadNotes()
+          if (fsNotes.length > 0) {
+            setNotes(fsNotes)
+            setActiveNoteId(fsNotes[0].id)
+          }
+        }
+      })
+    }
+  }, [])
+
+  const handleConnectDirectory = async () => {
+    try {
+      await fileSystemStorage.connectDirectory()
+      setConnectedDirectoryName(fileSystemStorage.getDirectoryName())
+
+      // Save existing notes to the new folder (Migration)
+      for (const note of notes) {
+        await fileSystemStorage.saveNote(note)
+      }
+
+      // Reload from FS to ensure consistency
+      const fsNotes = await fileSystemStorage.loadNotes()
+      setNotes(fsNotes)
+      if (fsNotes.length > 0 && !activeNoteId) {
+        setActiveNoteId(fsNotes[0].id)
+      }
+    } catch (error) {
+      console.error("Failed to connect directory:", error)
+    }
+  }
+
+  const handleDisconnectDirectory = async () => {
+    await fileSystemStorage.disconnectDirectory()
+    setConnectedDirectoryName(null)
+    // Reload notes from localStorage
+    const savedNotes = localStorage.getItem("nerds-note-data")
+    if (savedNotes) {
+      const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
+        ...note,
+        lastModified: new Date(note.lastModified),
+      }))
+      setNotes(parsedNotes)
+      if (parsedNotes.length > 0) setActiveNoteId(parsedNotes[0].id)
+    } else {
+      setNotes([])
+      setActiveNoteId(null)
+    }
+  }
+
   // Save notes to localStorage whenever notes change
   useEffect(() => {
     if (notes.length > 0) {
@@ -146,22 +210,56 @@ export default function NotepadClient() {
     }
   }, [activeNoteId, activeNote, editor])
 
-  const createNewNote = () => {
+  const createNewNote = async () => {
     const newNote: Note = {
       id: Date.now().toString(),
       title: "Untitled Note",
       content: "",
       lastModified: new Date(),
     }
+
+    if (connectedDirectoryName) {
+      await fileSystemStorage.saveNote(newNote)
+      // Reload to get the correct ID/state if needed, or just push
+      // For simplicity, just push, but FS save is async.
+    }
+
     setNotes((prev) => [newNote, ...prev])
     setActiveNoteId(newNote.id)
   }
 
   const updateNote = (id: string, updates: Partial<Note>) => {
-    setNotes((prev) => prev.map((note) => (note.id === id ? { ...note, ...updates, lastModified: new Date() } : note)))
+    setNotes((prev) => prev.map((note) => {
+      if (note.id === id) {
+        const updatedNote = { ...note, ...updates, lastModified: new Date() }
+
+        // Sync to File System
+        if (connectedDirectoryName) {
+          // Check for rename
+          if (updates.title && updates.title !== note.title) {
+            fileSystemStorage.deleteNoteByTitle(note.title)
+            fileSystemStorage.saveNote(updatedNote)
+          } else if (updates.content) {
+            // Debounce content saves
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+            saveTimeoutRef.current = setTimeout(() => {
+              fileSystemStorage.saveNote(updatedNote)
+            }, 1000)
+          }
+        }
+
+        return updatedNote
+      }
+      return note
+    }))
   }
 
   const deleteNote = (id: string) => {
+    const noteToDelete = notes.find(n => n.id === id)
+    if (noteToDelete && connectedDirectoryName) {
+      fileSystemStorage.deleteNoteByTitle(noteToDelete.title)
+    }
+
     setNotes((prev) => {
       const filtered = prev.filter((note) => note.id !== id)
       if (activeNoteId === id && filtered.length > 0) {
@@ -420,6 +518,38 @@ export default function NotepadClient() {
                 </div>
               )}
             </div>
+
+            {/* Storage Footer */}
+            {isFileSystemSupported && (
+              <div className="p-3 border-t border-sidebar-border bg-muted/20">
+                {connectedDirectoryName ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-xs text-primary font-medium px-1">
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      <span className="truncate">Saving to: {connectedDirectoryName}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDisconnectDirectory}
+                      className="w-full text-xs h-7"
+                    >
+                      Disconnect Folder
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleConnectDirectory}
+                    className="w-full text-xs h-8 gap-2 bg-background/50"
+                  >
+                    <HardDrive className="h-3.5 w-3.5" />
+                    Connect Local Folder
+                  </Button>
+                )}
+              </div>
+            )}
           </aside>
         )}
 
@@ -488,17 +618,19 @@ export default function NotepadClient() {
 
 
       {/* Exit Full Screen Button - Only visible in distract free mode */}
-      {isDistractFree && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsDistractFree(false)}
-          className="fixed top-4 right-4 z-50 bg-background/80 backdrop-blur-sm border-border/50 hover:bg-background/90"
-        >
-          <Minimize2 className="h-4 w-4 mr-2" />
-          Exit Full Screen
-        </Button>
-      )}
+      {
+        isDistractFree && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDistractFree(false)}
+            className="fixed top-4 right-4 z-50 bg-background/80 backdrop-blur-sm border-border/50 hover:bg-background/90"
+          >
+            <Minimize2 className="h-4 w-4 mr-2" />
+            Exit Full Screen
+          </Button>
+        )
+      }
 
 
 
@@ -517,75 +649,79 @@ export default function NotepadClient() {
       />
 
       {/* Delete Confirmation Dialog */}
-      {noteToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="p-6 max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-2">Delete Note</h3>
-            <p className="text-muted-foreground mb-4">
-              Are you sure you want to delete this note? This action cannot be undone.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setNoteToDelete(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  deleteNote(noteToDelete)
-                  setNoteToDelete(null)
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      {
+        noteToDelete && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="p-6 max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-2">Delete Note</h3>
+              <p className="text-muted-foreground mb-4">
+                Are you sure you want to delete this note? This action cannot be undone.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setNoteToDelete(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    deleteNote(noteToDelete)
+                    setNoteToDelete(null)
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )
+      }
 
       {/* Feature Announcement Modal */}
-      {showAnnouncement && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="p-6 max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary" />
+      {
+        showAnnouncement && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="p-6 max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold">New Feature: Share Links!</h3>
               </div>
-              <h3 className="text-lg font-semibold">New Feature: Share Links!</h3>
-            </div>
-            <p className="text-muted-foreground mb-4">
-              You can now create shareable links for your notes! Click the <strong>"Create Link"</strong> button in the top bar to generate a public link that expires in 24 hours.
-            </p>
-            <ul className="text-sm text-muted-foreground mb-6 space-y-1.5">
-              <li className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-primary" />
-                One-click share links
-              </li>
-              <li className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-primary" />
-                Auto-expires in 24 hours
-              </li>
-              <li className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-primary" />
-                No login required for readers
-              </li>
-            </ul>
-            <Button
-              className="w-full"
-              onClick={() => {
-                localStorage.setItem("nerds-note-seen-share-feature", "true")
-                setShowAnnouncement(false)
-              }}
-            >
-              Got it!
-            </Button>
-          </Card>
-        </div>
-      )}
+              <p className="text-muted-foreground mb-4">
+                You can now create shareable links for your notes! Click the <strong>"Create Link"</strong> button in the top bar to generate a public link that expires in 24 hours.
+              </p>
+              <ul className="text-sm text-muted-foreground mb-6 space-y-1.5">
+                <li className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4 text-primary" />
+                  One-click share links
+                </li>
+                <li className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4 text-primary" />
+                  Auto-expires in 24 hours
+                </li>
+                <li className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4 text-primary" />
+                  No login required for readers
+                </li>
+              </ul>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  localStorage.setItem("nerds-note-seen-share-feature", "true")
+                  setShowAnnouncement(false)
+                }}
+              >
+                Got it!
+              </Button>
+            </Card>
+          </div>
+        )
+      }
 
-    </div>
+    </div >
   )
 }
 
