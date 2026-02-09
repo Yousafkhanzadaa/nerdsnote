@@ -85,7 +85,7 @@ export default function NotepadClient() {
     }
 
     // Check if user has seen the new features announcement
-    const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-v5-features")
+    const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-v6-features")
     if (savedNotes && !hasSeenAnnouncement) {
       // Only show to existing users (who have saved notes)
       setShowAnnouncement(true)
@@ -721,6 +721,7 @@ export default function NotepadClient() {
                   <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
                     <HardDrive className="h-4 w-4" />
                     Local Folder Storage
+                    <span className="text-[10px] uppercase font-bold bg-background text-muted-foreground px-1.5 py-0.5 rounded border border-border ml-auto">Desktop Only</span>
                   </h4>
                   <p className="text-sm text-foreground/80 leading-relaxed mb-2">
                     Prevent data loss by connecting a real folder on your device. Your notes will be saved as <strong>.txt</strong> files.
@@ -734,7 +735,7 @@ export default function NotepadClient() {
               <Button
                 className="w-full font-semibold"
                 onClick={() => {
-                  localStorage.setItem("nerds-note-seen-v5-features", "true")
+                  localStorage.setItem("nerds-note-seen-v6-features", "true")
                   setShowAnnouncement(false)
                 }}
               >
