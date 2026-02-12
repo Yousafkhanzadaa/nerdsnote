@@ -1,3 +1,5 @@
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { GeistSans } from "geist/font/sans"
@@ -84,19 +86,25 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const isRtl = locale === 'ar'; // Simple check for Arabic
+
   return (
-    <html lang="en">
+    <html lang={locale} dir={isRtl ? 'rtl' : 'ltr'}>
       <head>
         <link rel="alternate" hrefLang="en" href="https://nerdsnote.com/" />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <Suspense fallback={null}>{children}</Suspense>
-        <Analytics />
+        <NextIntlClientProvider messages={messages}>
+          <Suspense fallback={null}>{children}</Suspense>
+          <Analytics />
+        </NextIntlClientProvider>
       </body>
     </html>
   )

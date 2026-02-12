@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import FeaturesClient from "@/components/features-client"
+import { FeaturesClient } from "@/components/features-client"
 
 export const metadata: Metadata = {
   title: "Features — NerdsNote | Distraction-Free Online Notepad",

@@ -2,93 +2,79 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import { cn } from "@/lib/utils"
+import { useTranslations } from "next-intl"
 import { Card } from "@/components/ui/card"
-import { FileText, Moon, Sun, Download, Upload, Search, Maximize2, Shield } from "lucide-react"
+import { FileText, Moon, Sun, Download, Upload, Search, Maximize2, Shield, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
-export default function FeaturesClient() {
-  const [isDarkMode, setIsDarkMode] = useState(false)
+export function FeaturesClient() {
+  const t = useTranslations("Features")
+  const tLanding = useTranslations("Landing")
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("nerds-note-theme")
-    if (savedTheme === "dark") {
-      setIsDarkMode(true)
-      document.documentElement.classList.add("dark")
-    }
-  }, [])
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark")
-      localStorage.setItem("nerds-note-theme", "dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-      localStorage.setItem("nerds-note-theme", "light")
-    }
-  }, [isDarkMode])
+  const features = [
+    {
+      title: t("distractionFreeTitle"),
+      description: t("distractionFreeDescription"),
+      icon: <FileText className="h-6 w-6" />,
+    },
+    {
+      title: t("privateStorageTitle"),
+      description: t("privateStorageDescription"),
+      icon: <Shield className="h-6 w-6" />,
+    },
+    {
+      title: t("darkModeTitle"),
+      description: t("darkModeDescription"),
+      icon: <Moon className="h-6 w-6" />,
+    },
+    {
+      title: t("fullScreenTitle"),
+      description: t("fullScreenDescription"),
+      icon: <Maximize2 className="h-6 w-6" />,
+    },
+    {
+      title: t("exportNotesTitle"),
+      description: t("exportNotesDescription"),
+      icon: <Download className="h-6 w-6" />,
+    },
+    {
+      title: t("importFilesTitle"),
+      description: t("importFilesDescription"),
+      icon: <Upload className="h-6 w-6" />,
+    },
+    {
+      title: t("quickSearchTitle"),
+      description: t("quickSearchDescription"),
+      icon: <Search className="h-6 w-6" />,
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Simple header with theme toggle */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 p-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold">NerdsNote Features</h1>
-        <Button variant="ghost" size="sm" onClick={() => setIsDarkMode(!isDarkMode)}>
-          {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </Button>
-      </header>
-
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-8">Features of NerdsNote: Free Online Notepad and Note Taking App</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <FileText className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Distraction-Free Writing</h2>
-            <p>Focus on your notes with a clean, minimal interface. Perfect for online notepad users seeking simplicity.</p>
-          </Card>
-
-          <Card className="p-6">
-            <Shield className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Private and Local Storage</h2>
-            <p>All notes saved locally in your browser - no servers, no tracking. Ideal for private note taking.</p>
-          </Card>
-
-          <Card className="p-6">
-            <Moon className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Dark Mode Support</h2>
-            <p>Switch between light and dark themes for comfortable note taking anytime.</p>
-          </Card>
-
-          <Card className="p-6">
-            <Maximize2 className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Full-Screen Mode</h2>
-            <p>Enter distraction-free full-screen for immersive writing in your online notepad.</p>
-          </Card>
-
-          <Card className="p-6">
-            <Download className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Export Notes</h2>
-            <p>Easily download your notes as text files from this free note taking app.</p>
-          </Card>
-
-          <Card className="p-6">
-            <Upload className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Import Files</h2>
-            <p>Upload text files to create new notes in your browser notepad.</p>
-          </Card>
-
-          <Card className="p-6">
-            <Search className="h-8 w-8 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Quick Search</h2>
-            <p>Search across all your notes instantly in this online note taking tool.</p>
-          </Card>
+      <div className="container mx-auto px-4 py-16">
+        <h1 className="text-4xl font-bold text-center mb-12 text-primary">{t("title")}</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {features.map((feature, index) => (
+            <Card key={index} className="p-6 hover:shadow-lg transition-shadow bg-card/50 backdrop-blur-sm border-border">
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 p-3 bg-primary/10 rounded-full text-primary">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
+              </div>
+            </Card>
+          ))}
         </div>
-
-        <p className="mt-8 text-center text-muted-foreground">
-          Discover why NerdsNote is the best free online notepad for your note taking needs.
-        </p>
+        <div className="mt-16 text-center">
+          <h2 className="text-2xl font-semibold mb-4">{t("footerText")}</h2>
+          <Button size="lg" asChild>
+            <Link href="/notepad">{tLanding("startWriting")}</Link>
+          </Button>
+        </div>
       </div>
     </div>
   )
 }
-

@@ -1,10 +1,11 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { useTranslations } from "next-intl"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { MessageSquare, Send, X, Loader2, CheckCircle } from "lucide-react"
+import { MessageSquare, Send, X, Loader2, CheckCircle, Check } from "lucide-react"
 import { db } from "@/lib/firebase"
 import { collection, addDoc } from "firebase/firestore"
 
@@ -14,6 +15,8 @@ interface FeedbackDialogProps {
 }
 
 export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
+  const t = useTranslations("FeedbackDialog")
+  const tCommon = useTranslations("Common")
   const [feedback, setFeedback] = useState("")
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -65,49 +68,51 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
 
         <div className="p-6 space-y-4">
           {isSuccess ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center animate-in fade-in zoom-in-95">
-              <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4 text-green-600 dark:text-green-400">
-                <CheckCircle className="h-6 w-6" />
+            <div className="flex flex-col items-center justify-center space-y-4 py-8">
+              <div className="rounded-full bg-green-100 p-3 dark:bg-green-900">
+                <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
-              <h4 className="text-lg font-semibold mb-2">Thank You!</h4>
-              <p className="text-muted-foreground">Your feedback has been received.</p>
+              <h3 className="text-xl font-semibold">{t("thankYouTitle")}</h3>
+              <p className="text-center text-muted-foreground">
+                {t("thankYouDescription")}
+              </p>
+              <Button onClick={onClose} className="mt-4">
+                {tCommon("close")}
+              </Button>
             </div>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                We'd love to hear your thoughts, suggestions, or report any issues.
+                {t("description")}
               </p>
               <div className="space-y-3">
                 <Textarea
-                  placeholder="Tell us what you think..."
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
-                  className="min-h-[120px]"
+                  placeholder={t("placeholder")}
+                  className="min-h-[100px]"
+                  required
                 />
                 <Input
                   type="email"
-                  placeholder="Email (optional)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("emailPlaceholder")}
                 />
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!feedback.trim() || isSubmitting}
-                  className="w-full sm:w-auto"
-                >
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                  {tCommon("cancel")}
+                </Button>
+                <Button type="submit" onClick={handleSubmit} disabled={isSubmitting || !feedback.trim()}>
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Sending...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t("sending")}
                     </>
                   ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-2" />
-                      Send Feedback
-                    </>
+                    t("sendFeedback")
                   )}
                 </Button>
               </div>
@@ -116,12 +121,11 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
         </div>
 
         <div className="p-4 border-t border-border bg-muted/10 text-center">
-          <p className="text-xs text-muted-foreground">
-            Your feedback helps us improve NerdsNote.
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            {t("footer")}
           </p>
         </div>
       </Card>
     </div>
   )
 }
-

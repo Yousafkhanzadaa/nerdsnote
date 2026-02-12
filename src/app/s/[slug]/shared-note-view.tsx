@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
-import { FileText, ExternalLink, Clock, Calendar } from "lucide-react";
+import { FileText, ExternalLink, Clock, Calendar, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import Link from 'next/link';
+
+import { useTranslations } from "next-intl"
 
 interface SharedNoteViewProps {
     content: string;
@@ -19,6 +22,7 @@ export default function SharedNoteView({
     expiresAt,
     openInAppUrl,
 }: SharedNoteViewProps) {
+    const t = useTranslations("SharedNote")
     const [sanitizedContent, setSanitizedContent] = useState("");
     const createdDate = new Date(createdAt);
     const expiresDate = expiresAt ? new Date(expiresAt) : null;
@@ -55,11 +59,9 @@ export default function SharedNoteView({
                         <FileText className="h-6 w-6 text-primary" />
                         <h1 className="text-xl font-bold text-primary">NerdsNote</h1>
                     </a>
-                    <Button asChild size="sm">
-                        <a href={openInAppUrl}>
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Open in NerdsNote
-                        </a>
+                    <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
+                        <ArrowUpRight className="h-4 w-4 mr-2" />
+                        {t("openInApp")}
                     </Button>
                 </div>
             </header>
@@ -68,22 +70,16 @@ export default function SharedNoteView({
             <main className="max-w-4xl mx-auto px-4 py-8">
                 {/* Metadata badges */}
                 <div className="flex flex-wrap gap-3 mb-6 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5 bg-muted/50 px-3 py-1.5 rounded-full">
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>Shared {formatDate(createdDate)}</span>
+                    <div className="flex items-center text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                        <Clock className="h-3 w-3 mr-1.5" />
+                        {t("sharedOn", { date: createdDate.toLocaleDateString() })}
                     </div>
-                    {expiresDate && (
-                        <div className="flex items-center gap-1.5 bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span>Expires {formatDate(expiresDate)}</span>
-                        </div>
-                    )}
-                    {!expiresDate && (
-                        <div className="flex items-center gap-1.5 bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 px-3 py-1.5 rounded-full">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span>Never expires</span>
-                        </div>
-                    )}
+                    <div className="flex items-center text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                        <Calendar className="h-3 w-3 mr-1.5" />
+                        {expiresDate
+                            ? t("expiresOn", { date: expiresDate.toLocaleDateString() })
+                            : t("neverExpires")}
+                    </div>
                 </div>
 
                 {/* Note content with TipTap-like styling */}
@@ -109,18 +105,11 @@ export default function SharedNoteView({
             </main>
 
             {/* Footer CTA */}
-            <footer className="border-t border-border bg-muted/30 mt-auto">
-                <div className="max-w-4xl mx-auto px-4 py-6 text-center">
-                    <p className="text-muted-foreground mb-3">
-                        NerdsNote is a free, privacy-first notepad. No login required.
-                    </p>
-                    <Button asChild variant="outline">
-                        <a href="/">
-                            <FileText className="h-4 w-4 mr-2" />
-                            Create your own note
-                        </a>
-                    </Button>
-                </div>
+            <footer className="py-6 text-center text-sm text-muted-foreground bg-muted/20 border-t border-border mt-auto">
+                <p>{t("footerText")}</p>
+                <Link href="/" className="text-primary hover:underline mt-2 inline-block">
+                    {t("createYourOwn")}
+                </Link>
             </footer>
         </div>
     );

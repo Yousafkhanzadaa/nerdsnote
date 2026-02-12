@@ -16,6 +16,7 @@ import {
     AlertCircle,
 } from "lucide-react";
 import type { ExpiryOption, ShareNoteResponse, ShareNoteError } from "@/lib/share-types";
+import { useTranslations } from "next-intl";
 
 interface CreateShareLinkDialogProps {
     isOpen: boolean;
@@ -34,6 +35,8 @@ export function CreateShareLinkDialog({
     onClose,
     noteContent,
 }: CreateShareLinkDialogProps) {
+    const t = useTranslations("ShareDialog");
+    const tCommon = useTranslations("Common");
     const [state, setState] = useState<DialogState>("consent");
     const [expiresIn] = useState<ExpiryOption>("1d");
     const [shareUrl, setShareUrl] = useState("");
@@ -66,12 +69,12 @@ export function CreateShareLinkDialog({
 
             if (!response.ok) {
                 const errorData = data as ShareNoteError;
-                let errorMessage = errorData.error || "Failed to create share link";
+                let errorMessage = errorData.error || t("error");
 
                 if (response.status === 413) {
-                    errorMessage = "Note is too large to share (max 50KB)";
+                    errorMessage = t("errorTooLarge");
                 } else if (response.status === 429) {
-                    errorMessage = "Too many shares. Please wait an hour and try again.";
+                    errorMessage = t("errorTooMany");
                 }
 
                 setError(errorMessage);
@@ -93,7 +96,7 @@ export function CreateShareLinkDialog({
                 // Clipboard access may fail, that's okay
             }
         } catch {
-            setError("Network error. Please check your connection and try again.");
+            setError(t("errorNetwork"));
             setState("error");
         }
     };
@@ -136,7 +139,7 @@ export function CreateShareLinkDialog({
                 <div className="p-4 border-b border-border flex justify-between items-center bg-muted/20">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Link2 className="h-5 w-5 text-primary" />
-                        {state === "success" ? "Link Created!" : "Create a shareable link?"}
+                        {state === "success" ? t("titleSuccess") : t("title")}
                     </h3>
                     <Button variant="ghost" size="sm" onClick={handleClose} className="h-8 w-8 p-0">
                         <X className="h-4 w-4" />
@@ -149,14 +152,13 @@ export function CreateShareLinkDialog({
                     {state === "consent" && (
                         <div className="space-y-4">
                             <p className="text-muted-foreground text-sm leading-relaxed">
-                                This will upload your note to NerdsNote so anyone with the link can view it.
-                                Links expire after 24 hours. We won't track readers. Continue?
+                                {t("consentDescription")}
                             </p>
 
                             {/* Expiry info */}
                             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
                                 <Clock className="h-4 w-4" />
-                                <span>Link expires in 24 hours</span>
+                                <span>{t("expiresIn24Hours")}</span>
                             </div>
 
                             {/* Actions */}
@@ -166,7 +168,7 @@ export function CreateShareLinkDialog({
                                 </Button>
                                 <Button onClick={handleCreateLink} className="flex-1">
                                     <Link2 className="h-4 w-4 mr-2" />
-                                    Create Link
+                                    {t("createLink")}
                                 </Button>
                             </div>
                         </div>
@@ -176,7 +178,7 @@ export function CreateShareLinkDialog({
                     {state === "loading" && (
                         <div className="flex flex-col items-center justify-center py-8">
                             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                            <p className="text-muted-foreground text-sm">Creating your share link...</p>
+                            <p className="text-muted-foreground text-sm">{t("creatingLink")}</p>
                         </div>
                     )}
 
@@ -185,14 +187,14 @@ export function CreateShareLinkDialog({
                         <div className="space-y-4">
                             {/* Success message */}
                             <div className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 p-3 rounded-md text-sm">
-                                Link created — copied to clipboard. Share it with anyone.
+                                {t("successMessage")}
                                 {expiresAt && (
                                     <span className="block mt-1">
-                                        The note will expire on {formatExpiryDate(expiresAt)}.
+                                        {t("expiresOn", { date: formatExpiryDate(expiresAt) })}
                                     </span>
                                 )}
                                 {!expiresAt && (
-                                    <span className="block mt-1">This link will never expire.</span>
+                                    <span className="block mt-1">{t("neverExpires")}</span>
                                 )}
                             </div>
 
@@ -223,34 +225,34 @@ export function CreateShareLinkDialog({
                                         className="flex items-center gap-2"
                                     >
                                         <Share2 className="h-4 w-4" />
-                                        Share
+                                        {t("share")}
                                     </Button>
                                 )}
                                 <Button variant="outline" size="sm" asChild>
                                     <a
-                                        href={`https://wa.me/?text=${encodeURIComponent(`Check out this note: ${shareUrl}`)}`}
+                                        href={`https://wa.me/?text=${encodeURIComponent(t("checkOutNote", { url: shareUrl }))}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center gap-2"
                                     >
                                         <MessageCircle className="h-4 w-4" />
-                                        WhatsApp
+                                        {t("whatsapp")}
                                     </a>
                                 </Button>
                                 <Button variant="outline" size="sm" asChild>
                                     <a
-                                        href={`mailto:?subject=${encodeURIComponent("Shared Note")}&body=${encodeURIComponent(`Check out this note: ${shareUrl}`)}`}
+                                        href={`mailto:?subject=${encodeURIComponent(t("title"))}&body=${encodeURIComponent(t("checkOutNote", { url: shareUrl }))}`}
                                         className="flex items-center gap-2"
                                     >
                                         <Mail className="h-4 w-4" />
-                                        Email
+                                        {t("email")}
                                     </a>
                                 </Button>
                             </div>
 
                             {/* Done button */}
                             <Button onClick={handleClose} className="w-full">
-                                Done
+                                {tCommon("done")}
                             </Button>
                         </div>
                     )}
@@ -265,10 +267,10 @@ export function CreateShareLinkDialog({
 
                             <div className="flex gap-3">
                                 <Button variant="outline" onClick={handleClose} className="flex-1">
-                                    Cancel
+                                    {tCommon("cancel")}
                                 </Button>
                                 <Button onClick={() => setState("consent")} className="flex-1">
-                                    Try Again
+                                    {tCommon("tryAgain")}
                                 </Button>
                             </div>
                         </div>
