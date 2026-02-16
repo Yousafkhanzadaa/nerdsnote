@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Link from 'next/link';
 
-import { useTranslations } from "next-intl"
-
 interface SharedNoteViewProps {
     content: string;
     createdAt: string;
@@ -22,7 +20,6 @@ export default function SharedNoteView({
     expiresAt,
     openInAppUrl,
 }: SharedNoteViewProps) {
-    const t = useTranslations("SharedNote")
     const [sanitizedContent, setSanitizedContent] = useState("");
     const createdDate = new Date(createdAt);
     const expiresDate = expiresAt ? new Date(expiresAt) : null;
@@ -61,7 +58,7 @@ export default function SharedNoteView({
                     </a>
                     <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
                         <ArrowUpRight className="h-4 w-4 mr-2" />
-                        {t("openInApp")}
+                        Open in App
                     </Button>
                 </div>
             </header>
@@ -72,13 +69,13 @@ export default function SharedNoteView({
                 <div className="flex flex-wrap gap-3 mb-6 text-sm text-muted-foreground">
                     <div className="flex items-center text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
                         <Clock className="h-3 w-3 mr-1.5" />
-                        {t("sharedOn", { date: createdDate.toLocaleDateString() })}
+                        Shared on {createdDate.toLocaleDateString()}
                     </div>
                     <div className="flex items-center text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
                         <Calendar className="h-3 w-3 mr-1.5" />
                         {expiresDate
-                            ? t("expiresOn", { date: expiresDate.toLocaleDateString() })
-                            : t("neverExpires")}
+                            ? `Expires on ${expiresDate.toLocaleDateString()}`
+                            : "Never expires"}
                     </div>
                 </div>
 
@@ -106,9 +103,9 @@ export default function SharedNoteView({
 
             {/* Footer CTA */}
             <footer className="py-6 text-center text-sm text-muted-foreground bg-muted/20 border-t border-border mt-auto">
-                <p>{t("footerText")}</p>
+                <p>NerdsNote — Free, privacy-first notepad</p>
                 <Link href="/" className="text-primary hover:underline mt-2 inline-block">
-                    {t("createYourOwn")}
+                    Create your own note
                 </Link>
             </footer>
         </div>

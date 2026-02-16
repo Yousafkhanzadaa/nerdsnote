@@ -3,50 +3,46 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { useTranslations } from "next-intl"
 import { Card } from "@/components/ui/card"
 import { FileText, Moon, Sun, Download, Upload, Search, Maximize2, Shield, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
 export function FeaturesClient() {
-  const t = useTranslations("Features")
-  const tLanding = useTranslations("Landing")
-
   const features = [
     {
-      title: t("distractionFreeTitle"),
-      description: t("distractionFreeDescription"),
+      title: "Distraction-Free Writing",
+      description: "Focus on your notes with a clean, minimal interface. Perfect for online notepad users seeking simplicity.",
       icon: <FileText className="h-6 w-6" />,
     },
     {
-      title: t("privateStorageTitle"),
-      description: t("privateStorageDescription"),
+      title: "Private and Local Storage",
+      description: "All notes saved locally in your browser - no servers, no tracking. Ideal for private note taking.",
       icon: <Shield className="h-6 w-6" />,
     },
     {
-      title: t("darkModeTitle"),
-      description: t("darkModeDescription"),
+      title: "Dark Mode Support",
+      description: "Switch between light and dark themes for comfortable note taking anytime.",
       icon: <Moon className="h-6 w-6" />,
     },
     {
-      title: t("fullScreenTitle"),
-      description: t("fullScreenDescription"),
+      title: "Full-Screen Mode",
+      description: "Enter distraction-free full-screen for immersive writing in your online notepad.",
       icon: <Maximize2 className="h-6 w-6" />,
     },
     {
-      title: t("exportNotesTitle"),
-      description: t("exportNotesDescription"),
+      title: "Export Notes",
+      description: "Easily download your notes as text files from this free note taking app.",
       icon: <Download className="h-6 w-6" />,
     },
     {
-      title: t("importFilesTitle"),
-      description: t("importFilesDescription"),
+      title: "Import Files",
+      description: "Upload text files to create new notes in your browser notepad.",
       icon: <Upload className="h-6 w-6" />,
     },
     {
-      title: t("quickSearchTitle"),
-      description: t("quickSearchDescription"),
+      title: "Quick Search",
+      description: "Search across all your notes instantly in this online note taking tool.",
       icon: <Search className="h-6 w-6" />,
     },
   ]
@@ -54,7 +50,7 @@ export function FeaturesClient() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-16">
-        <h1 className="text-4xl font-bold text-center mb-12 text-primary">{t("title")}</h1>
+        <h1 className="text-4xl font-bold text-center mb-12 text-primary">NerdsNote Features</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <Card key={index} className="p-6 hover:shadow-lg transition-shadow bg-card/50 backdrop-blur-sm border-border">
@@ -69,9 +65,9 @@ export function FeaturesClient() {
           ))}
         </div>
         <div className="mt-16 text-center">
-          <h2 className="text-2xl font-semibold mb-4">{t("footerText")}</h2>
+          <h2 className="text-2xl font-semibold mb-4">Discover why NerdsNote is the best free online notepad for your note taking needs.</h2>
           <Button size="lg" asChild>
-            <Link href="/notepad">{tLanding("startWriting")}</Link>
+            <Link href="/notepad">Start Writing</Link>
           </Button>
         </div>
       </div>

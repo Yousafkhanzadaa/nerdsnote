@@ -1,7 +1,6 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { useTranslations } from "next-intl"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -15,8 +14,6 @@ interface FeedbackDialogProps {
 }
 
 export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
-  const t = useTranslations("FeedbackDialog")
-  const tCommon = useTranslations("Common")
   const [feedback, setFeedback] = useState("")
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -72,24 +69,24 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
               <div className="rounded-full bg-green-100 p-3 dark:bg-green-900">
                 <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-xl font-semibold">{t("thankYouTitle")}</h3>
+              <h3 className="text-xl font-semibold">Thank You!</h3>
               <p className="text-center text-muted-foreground">
-                {t("thankYouDescription")}
+                Your feedback has been received.
               </p>
               <Button onClick={onClose} className="mt-4">
-                {tCommon("close")}
+                Close
               </Button>
             </div>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                {t("description")}
+                We'd love to hear your thoughts, suggestions, or report any issues.
               </p>
               <div className="space-y-3">
                 <Textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
-                  placeholder={t("placeholder")}
+                  placeholder="Tell us what you think..."
                   className="min-h-[100px]"
                   required
                 />
@@ -97,22 +94,22 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t("emailPlaceholder")}
+                  placeholder="Email (optional)"
                 />
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
               <div className="flex justify-end gap-3">
                 <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-                  {tCommon("cancel")}
+                  Cancel
                 </Button>
                 <Button type="submit" onClick={handleSubmit} disabled={isSubmitting || !feedback.trim()}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t("sending")}
+                      Sending...
                     </>
                   ) : (
-                    t("sendFeedback")
+                    "Send Feedback"
                   )}
                 </Button>
               </div>
@@ -122,7 +119,7 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
 
         <div className="p-4 border-t border-border bg-muted/10 text-center">
           <p className="text-center text-xs text-muted-foreground mt-4">
-            {t("footer")}
+            Your feedback helps us improve NerdsNote.
           </p>
         </div>
       </Card>

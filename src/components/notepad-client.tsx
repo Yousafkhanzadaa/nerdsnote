@@ -11,8 +11,6 @@ import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import CharacterCount from "@tiptap/extension-character-count"
 import { EditorToolbar } from "@/components/editor-toolbar"
-import { useTranslations } from "next-intl"
-import { LanguageSwitcher } from "./language-switcher"
 
 import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
@@ -28,8 +26,6 @@ interface Note {
 }
 
 export default function NotepadClient() {
-  const t = useTranslations("Notepad")
-  const tCommon = useTranslations("Common")
   const [notes, setNotes] = useState<Note[]>([])
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -79,8 +75,8 @@ export default function NotepadClient() {
       // Create initial note
       const initialNote: Note = {
         id: "1",
-        title: t("title"),
-        content: t("welcomeDescription"),
+        title: "NerdsNote",
+        content: "Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.",
         lastModified: new Date(),
       }
       setNotes([initialNote])
@@ -112,7 +108,7 @@ export default function NotepadClient() {
           if (data && data.content) {
             const importedNote: Note = {
               id: Date.now().toString(),
-              title: t("newNote"),
+              title: "New Note",
               content: data.content,
               lastModified: new Date(),
             }
@@ -218,15 +214,13 @@ export default function NotepadClient() {
   const createNewNote = async () => {
     const newNote: Note = {
       id: Date.now().toString(),
-      title: t("newNote"),
+      title: "New Note",
       content: "",
       lastModified: new Date(),
     }
 
     if (connectedDirectoryName) {
       await fileSystemStorage.saveNote(newNote)
-      // Reload to get the correct ID/state if needed, or just push
-      // For simplicity, just push, but FS save is async.
     }
 
     setNotes((prev) => [newNote, ...prev])
@@ -306,9 +300,6 @@ export default function NotepadClient() {
     reader.onload = (e) => {
       const content = e.target?.result as string
       // Import as plain text, TipTap will handle it (wrap in <p>)
-      // We can create the note with this content.
-      // When we load it into editor, it will be converted to HTML.
-      // To ensure consistency, we might want to wrap it now, but letting TipTap handle it on load is safer.
       const newNote: Note = {
         id: Date.now().toString(),
         title: file.name.replace(/\.[^/.]+$/, ""),
@@ -379,13 +370,13 @@ export default function NotepadClient() {
               </Button>
               <div className="flex items-center gap-2">
                 <FileText className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-bold text-primary">{t("title")}</h1>
+                <h1 className="text-xl font-bold text-primary">NerdsNote</h1>
               </div>
               <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="search-input"
-                  placeholder={t("searchPlaceholder")}
+                  placeholder="Search notes... (Ctrl+F)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 w-64"
@@ -393,14 +384,14 @@ export default function NotepadClient() {
               </div>
               <Button variant="ghost" size="sm" onClick={() => setIsFeedbackDialogOpen(true)} className="hidden sm:flex">
                 <MessageSquare className="h-4 w-4 mr-2" />
-                {t("feedback")}
+                Feedback
               </Button>
             </div>
 
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => setIsCreateLinkDialogOpen(true)} className="text-primary font-medium" disabled={!activeNote}>
                 <Link2 className="h-4 w-4 mr-2" />
-                {t("createLink")}
+                Create Link
               </Button>
               <div className="w-px h-4 bg-border mx-1" />
               <Button variant="ghost" size="sm" onClick={() => setIsDistractFree(!isDistractFree)}>
@@ -409,7 +400,6 @@ export default function NotepadClient() {
               <Button variant="ghost" size="sm" onClick={() => setIsDarkMode(!isDarkMode)}>
                 {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <LanguageSwitcher />
             </div>
           </div>
         </header>
@@ -439,7 +429,7 @@ export default function NotepadClient() {
             <div className="p-4 border-b border-sidebar-border">
               {/* Mobile close button */}
               <div className="flex items-center justify-between mb-4 md:hidden">
-                <h2 className="text-lg font-semibold">{t("title")}</h2>
+                <h2 className="text-lg font-semibold">NerdsNote</h2>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -453,7 +443,7 @@ export default function NotepadClient() {
               <div className="relative mb-4 md:hidden">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t("searchPlaceholder")}
+                  placeholder="Search notes... (Ctrl+F)"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -466,7 +456,7 @@ export default function NotepadClient() {
                   setIsMobileSidebarOpen(false)
                 }} size="sm" className="flex-1">
                   <Plus className="h-4 w-4 mr-2" />
-                  {t("newNote")}
+                  New Note
                 </Button>
                 <Button variant="outline" size="sm" onClick={exportNote} disabled={!activeNote}>
                   <Download className="h-4 w-4" />
@@ -483,7 +473,7 @@ export default function NotepadClient() {
             <div className="flex-1 overflow-y-auto scrollbar-theme">
               {filteredNotes.length === 0 ? (
                 <div className="p-4 text-center text-muted-foreground">
-                  {searchQuery ? t("noNotesFound") : t("noNotesYet")}
+                  {searchQuery ? "No notes found" : "No notes yet"}
                 </div>
               ) : (
                 <div className="p-2 space-y-2">
@@ -532,7 +522,7 @@ export default function NotepadClient() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-xs text-primary font-medium px-1">
                       <FolderOpen className="h-3.5 w-3.5" />
-                      <span className="truncate">{t("savingTo", { folderName: connectedDirectoryName })}</span>
+                      <span className="truncate">Saving to: {connectedDirectoryName}</span>
                     </div>
                     <Button
                       variant="outline"
@@ -540,7 +530,7 @@ export default function NotepadClient() {
                       onClick={handleDisconnectDirectory}
                       className="w-full text-xs h-7"
                     >
-                      {t("disconnectFolder")}
+                      Disconnect Folder
                     </Button>
                   </div>
                 ) : (
@@ -551,7 +541,7 @@ export default function NotepadClient() {
                     className="w-full text-xs h-8 gap-2 bg-background/50"
                   >
                     <HardDrive className="h-3.5 w-3.5" />
-                    {t("connectFolder")}
+                    Connect Local Folder
                   </Button>
                 )}
               </div>
@@ -571,7 +561,7 @@ export default function NotepadClient() {
                       value={activeNote.title}
                       onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
                       className="text-lg font-medium border-none bg-transparent p-0 focus-visible:ring-0"
-                      placeholder={t("noteTitlePlaceholder")}
+                      placeholder="Note title..."
                     />
                   </div>
                 )}
@@ -595,11 +585,11 @@ export default function NotepadClient() {
               <div className="flex-1 flex items-center justify-center text-center">
                 <div>
                   <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h2 className="text-xl font-medium text-muted-foreground mb-2">{t("welcomeTitle")}</h2>
-                  <p className="text-muted-foreground mb-4">{t("welcomeDescription")}</p>
+                  <h2 className="text-xl font-medium text-muted-foreground mb-2">Welcome to NerdsNote: Free Online Notepad for Note Taking</h2>
+                  <p className="text-muted-foreground mb-4">Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.</p>
                   <Button onClick={createNewNote}>
                     <Plus className="h-4 w-4 mr-2" />
-                    {t("createFirstNote")}
+                    Create Your First Note
                   </Button>
                 </div>
               </div>
@@ -610,12 +600,12 @@ export default function NotepadClient() {
           {activeNote && editor && (
             <footer className="border-t border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground flex justify-between items-center shrink-0">
               <div className="flex gap-4">
-                <span>{t("words")}: {editor.storage.characterCount?.words() || 0}</span>
-                <span>{t("characters")}: {editor.storage.characterCount?.characters() || 0}</span>
+                <span>Words: {editor.storage.characterCount?.words() || 0}</span>
+                <span>Characters: {editor.storage.characterCount?.characters() || 0}</span>
               </div>
               <div className="flex gap-4">
-                <span>{t("autoSaved")}</span>
-                <span>{t("lastModified", { date: activeNote.lastModified.toLocaleTimeString() })}</span>
+                <span>Auto-saved</span>
+                <span>Last modified: {activeNote.lastModified.toLocaleTimeString()}</span>
               </div>
             </footer>
           )}
@@ -633,12 +623,10 @@ export default function NotepadClient() {
             className="fixed top-4 right-4 z-50 bg-background/80 backdrop-blur-sm border-border/50 hover:bg-background/90"
           >
             <Minimize2 className="h-4 w-4 mr-2" />
-            {t("exitFullScreen")}
+            Exit Full Screen
           </Button>
         )
       }
-
-
 
 
       {/* Create Share Link Dialog */}
@@ -666,16 +654,16 @@ export default function NotepadClient() {
         noteToDelete && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <Card className="p-6 max-w-md mx-4">
-              <h3 className="text-lg font-semibold mb-2">{t("deleteNoteTitle")}</h3>
+              <h3 className="text-lg font-semibold mb-2">Delete Note</h3>
               <p className="text-muted-foreground mb-4">
-                {t("deleteNoteConfirm")}
+                Are you sure you want to delete this note? This action cannot be undone.
               </p>
               <div className="flex gap-2 justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setNoteToDelete(null)}
                 >
-                  {tCommon("cancel")}
+                  Cancel
                 </Button>
                 <Button
                   variant="destructive"
@@ -684,7 +672,7 @@ export default function NotepadClient() {
                     setNoteToDelete(null)
                   }}
                 >
-                  {tCommon("delete")}
+                  Delete
                 </Button>
               </div>
             </Card>
@@ -701,38 +689,38 @@ export default function NotepadClient() {
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold">{t("announcementTitle")}</h3>
+                <h3 className="text-lg font-semibold">New Features: Share & Save!</h3>
               </div>
               <p className="text-sm text-muted-foreground mb-6">
-                {t("announcementDescription")}
+                We've added powerful new features to give you full control over your data.
               </p>
               <div className="space-y-6 mb-8">
                 <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
                   <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
                     <Link2 className="h-4 w-4" />
-                    {t("shareLinksTitle")}
+                    Share Links
                   </h4>
                   <p className="text-sm text-foreground/80 leading-relaxed mb-2">
-                    {t("shareLinksDescription")}
+                    Need to share a quick thought? Generate a secure, read-only public link for any note.
                   </p>
                   <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
-                    <li dangerouslySetInnerHTML={{ __html: t.raw("shareLinksStep1") }}></li>
-                    <li>{t("shareLinksStep2")}</li>
+                    <li>Click "Create Link" in the top bar</li>
+                    <li>Links auto-expire in 24 hours</li>
                   </ul>
                 </div>
 
                 <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
                   <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
                     <HardDrive className="h-4 w-4" />
-                    {t("localFolderTitle")}
-                    <span className="text-[10px] uppercase font-bold bg-background text-muted-foreground px-1.5 py-0.5 rounded border border-border ml-auto">{t("desktopOnly")}</span>
+                    Local Folder Storage
+                    <span className="text-[10px] uppercase font-bold bg-background text-muted-foreground px-1.5 py-0.5 rounded border border-border ml-auto">Desktop Only</span>
                   </h4>
                   <p className="text-sm text-foreground/80 leading-relaxed mb-2">
-                    <span dangerouslySetInnerHTML={{ __html: t.raw("localFolderDescription") }} />
+                    Prevent data loss by connecting a real folder on your device. Your notes will be saved as .txt files.
                   </p>
                   <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
-                    <li dangerouslySetInnerHTML={{ __html: t.raw("localFolderStep1") }}></li>
-                    <li>{t("localFolderStep2")}</li>
+                    <li>Click "Connect Local Folder" in the sidebar</li>
+                    <li>Files auto-sync instantly</li>
                   </ul>
                 </div>
               </div>
@@ -743,7 +731,7 @@ export default function NotepadClient() {
                   setShowAnnouncement(false)
                 }}
               >
-                {t("awesomeLetsGo")}
+                Awesome, Let's Go!
               </Button>
             </Card>
           </div>

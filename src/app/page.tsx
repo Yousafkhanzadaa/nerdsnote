@@ -3,17 +3,13 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { FileText, Shield, BookOpen, Info, ExternalLink, Download, Upload, Search, Moon, Sun, Maximize2, Plus, ArrowRight, Zap, Globe, Laptop } from "lucide-react"
 import Link from "next/link"
-import { getTranslations } from "next-intl/server"
-import { LanguageSwitcher } from "@/components/language-switcher"
 
 export const metadata: Metadata = {
   title: "NerdsNote | Distraction-Free Online Notepad",
   description: "Write immediately in your browser. Auto-saving, offline-capable, and privacy-first.",
 }
 
-export default async function HomePage() {
-  const t = await getTranslations("Landing")
-
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       {/* Navbar */}
@@ -26,13 +22,12 @@ export default async function HomePage() {
             <h1 className="text-xl font-bold tracking-tight">NerdsNote</h1>
           </Link>
           <div className="flex items-center gap-4">
-            <LanguageSwitcher />
             <Link href="/features" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">{t("seeFeatures")}</Button>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">See Features</Button>
             </Link>
             <Link href="/notepad">
               <Button size="sm" className="font-medium shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40 hover:-translate-y-0.5">
-                {t("startWriting")}
+                Start Writing
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
@@ -51,26 +46,27 @@ export default async function HomePage() {
           <div className="container mx-auto px-4 text-center">
             <div className="inline-flex items-center rounded-full border border-border bg-background/50 px-3 py-1 text-sm text-muted-foreground mb-6 backdrop-blur-sm">
               <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-              {t("noLogin")}
+              No Login Required • Free Forever
             </div>
 
-            <h1 className="max-w-4xl mx-auto text-5xl md:text-7xl font-bold tracking-tight mb-8 bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent pb-2" dangerouslySetInnerHTML={{ __html: t.raw("heroTitle") }}>
+            <h1 className="max-w-4xl mx-auto text-5xl md:text-7xl font-bold tracking-tight mb-8 bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent pb-2">
+              The Distraction‑Free <br /> Online Notepad.
             </h1>
 
             <p className="max-w-2xl mx-auto text-xl text-muted-foreground mb-10 leading-relaxed">
-              {t("heroDescription")}
+              Write immediately in your browser. Auto-saving, offline-capable, and privacy-first. Just you and your words.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
               <Link href="/notepad">
                 <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all hover:-translate-y-1">
-                  {t("startWriting")}
+                  Start Writing
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
               <Link href="/features">
                 <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2 hover:bg-muted/50">
-                  {t("seeFeatures")}
+                  See Features
                 </Button>
               </Link>
             </div>
@@ -99,7 +95,7 @@ export default async function HomePage() {
                   <div className="h-4 w-full bg-foreground/5 rounded animate-pulse delay-200"></div>
                 </div>
                 <div className="mt-8 p-4 border border-dashed border-border rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground text-sm">
-                  {t("heroMockupText")}
+                  Your distraction-free writing space looks like this
                 </div>
               </div>
             </div>
@@ -110,9 +106,11 @@ export default async function HomePage() {
         <section className="py-24 bg-muted/30">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold mb-4" dangerouslySetInnerHTML={{ __html: t.raw("featuresTitle") }}></h2>
+              <h2 className="text-3xl md:text-5xl font-bold mb-4">
+                Everything you need,<br />nothing you don't.
+              </h2>
               <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                {t("featuresDescription")}
+                Built for speed and focus. We removed the clutter so you can focus on the content.
               </p>
             </div>
 
@@ -120,33 +118,33 @@ export default async function HomePage() {
               {[
                 {
                   icon: Shield,
-                  title: t("privateDesignTitle"),
-                  description: t("privateDesignDesc")
+                  title: "Private by Design",
+                  description: "Notes live in your browser's local storage. No data is ever sent to our servers."
                 },
                 {
                   icon: Zap,
-                  title: t("autoSaveTitle"),
-                  description: t("autoSaveDesc")
+                  title: "Instant Auto-Save",
+                  description: "Never lose a thought. Every keystroke is saved automatically to your device."
                 },
                 {
                   icon: Moon,
-                  title: t("darkModeTitle"),
-                  description: t("darkModeDesc")
+                  title: "Dark Mode Ready",
+                  description: "Easy on the eyes day or night. Switch themes with a single click."
                 },
                 {
                   icon: Globe,
-                  title: t("offlineTitle"),
-                  description: t("offlineDesc")
+                  title: "Works Offline",
+                  description: "No internet? No problem. Access and edit your notes anywhere."
                 },
                 {
                   icon: Search,
-                  title: t("searchTitle"),
-                  description: t("searchDesc")
+                  title: "Instant Search",
+                  description: "Find any note in milliseconds with our lightning-fast search engine."
                 },
                 {
                   icon: Download,
-                  title: t("exportTitle"),
-                  description: t("exportDesc")
+                  title: "Export Anywhere",
+                  description: "Your data is yours. Export individual notes or your entire collection anytime."
                 }
               ].map((feature, i) => (
                 <Card key={i} className="p-8 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/60 bg-background/50 backdrop-blur-sm group">
@@ -166,7 +164,7 @@ export default async function HomePage() {
         {/* How it works */}
         <section className="py-24 border-y border-border/40">
           <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-16">{t("getStartedTitle")}</h2>
+            <h2 className="text-3xl font-bold text-center mb-16">Get Started in Seconds</h2>
             <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto relative">
               {/* Connecting Line (Desktop) */}
               <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-border to-transparent -z-10"></div>
@@ -175,22 +173,22 @@ export default async function HomePage() {
                 <div className="w-24 h-24 bg-background border-4 border-muted rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
                   <span className="text-4xl font-bold text-muted-foreground/50">1</span>
                 </div>
-                <h3 className="text-xl font-bold mb-2">{t("step1Title")}</h3>
-                <p className="text-muted-foreground">{t("step1Desc")}</p>
+                <h3 className="text-xl font-bold mb-2">Open the App</h3>
+                <p className="text-muted-foreground">No sign-up or login required. Just visit the URL.</p>
               </div>
               <div className="text-center">
                 <div className="w-24 h-24 bg-background border-4 border-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
                   <span className="text-4xl font-bold text-primary">2</span>
                 </div>
-                <h3 className="text-xl font-bold mb-2">{t("step2Title")}</h3>
-                <p className="text-muted-foreground">{t("step2Desc")}</p>
+                <h3 className="text-xl font-bold mb-2">Start Typing</h3>
+                <p className="text-muted-foreground">The editor is ready instantly. Just focus on your ideas.</p>
               </div>
               <div className="text-center">
                 <div className="w-24 h-24 bg-background border-4 border-muted rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
                   <span className="text-4xl font-bold text-muted-foreground/50">3</span>
                 </div>
-                <h3 className="text-xl font-bold mb-2">{t("step3Title")}</h3>
-                <p className="text-muted-foreground">{t("step3Desc")}</p>
+                <h3 className="text-xl font-bold mb-2">Auto-Saved</h3>
+                <p className="text-muted-foreground">Close the tab anytime. Your work is safe for next time.</p>
               </div>
             </div>
           </div>
@@ -204,45 +202,45 @@ export default async function HomePage() {
             <div className="mb-20">
               <div className="flex items-center gap-3 mb-8 justify-center">
                 <BookOpen className="h-8 w-8 text-primary" />
-                <h2 className="text-3xl font-bold text-center">{t("howToUseTitle")}</h2>
+                <h2 className="text-3xl font-bold text-center">How to Use NerdsNote</h2>
               </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <Card className="p-6 border-border/60 shadow-sm">
                   <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-primary" /> {t("gettingStartedTitle")}
+                    <Zap className="h-4 w-4 text-primary" /> Getting Started
                   </h3>
                   <ul className="space-y-3 text-sm text-muted-foreground">
                     <li className="flex gap-2">
                       <span className="text-primary font-bold">•</span>
-                      <span>{t("gettingStarted1")}</span>
+                      <span>Click "New Note" or just start typing.</span>
                     </li>
                     <li className="flex gap-2">
                       <span className="text-primary font-bold">•</span>
-                      <span>{t("gettingStarted2")}</span>
+                      <span>Notes auto-save instantly as you type.</span>
                     </li>
                     <li className="flex gap-2">
                       <span className="text-primary font-bold">•</span>
-                      <span>{t("gettingStarted3")}</span>
+                      <span>Use the search bar to find specific texts.</span>
                     </li>
                   </ul>
                 </Card>
 
                 <Card className="p-6 border-border/60 shadow-sm">
                   <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <Laptop className="h-4 w-4 text-primary" /> {t("shortcutsTitle")}
+                    <Laptop className="h-4 w-4 text-primary" /> Keyboard Shortcuts
                   </h3>
                   <ul className="space-y-3 text-sm text-muted-foreground">
                     <li className="flex justify-between items-center">
-                      <span>{t("shortcutNew")}</span>
+                      <span>Create new note</span>
                       <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono border border-border">Ctrl + N</kbd>
                     </li>
                     <li className="flex justify-between items-center">
-                      <span>{t("shortcutSave")}</span>
-                      <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono border border-border">{t("automatic")}</kbd>
+                      <span>Auto-save</span>
+                      <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono border border-border">Automatic</kbd>
                     </li>
                     <li className="flex justify-between items-center">
-                      <span>{t("shortcutSearch")}</span>
+                      <span>Focus Search</span>
                       <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono border border-border">Ctrl + F</kbd>
                     </li>
                   </ul>
@@ -250,20 +248,20 @@ export default async function HomePage() {
 
                 <Card className="p-6 border-border/60 shadow-sm">
                   <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <Maximize2 className="h-4 w-4 text-primary" /> {t("proFeaturesTitle")}
+                    <Maximize2 className="h-4 w-4 text-primary" /> Pro Features
                   </h3>
                   <ul className="space-y-3 text-sm text-muted-foreground">
                     <li className="flex gap-2">
                       <span className="text-primary font-bold">•</span>
-                      <span dangerouslySetInnerHTML={{ __html: t.raw("proFeature1") }}></span>
+                      <span>Distraction-Free: Use maximize button.</span>
                     </li>
                     <li className="flex gap-2">
                       <span className="text-primary font-bold">•</span>
-                      <span dangerouslySetInnerHTML={{ __html: t.raw("proFeature2") }}></span>
+                      <span>Theme: Toggle Dark/Light mode.</span>
                     </li>
                     <li className="flex gap-2">
                       <span className="text-primary font-bold">•</span>
-                      <span dangerouslySetInnerHTML={{ __html: t.raw("proFeature3") }}></span>
+                      <span>Font Size: Adjust with A+ / A-.</span>
                     </li>
                   </ul>
                 </Card>
@@ -277,20 +275,20 @@ export default async function HomePage() {
               <div className="lg:col-span-2">
                 <h3 className="text-2xl font-bold mb-8 flex items-center gap-2">
                   <Info className="h-6 w-6 text-primary" />
-                  {t("faqTitle")}
+                  Frequently Asked Questions
                 </h3>
                 <div className="grid md:grid-cols-2 gap-x-8 gap-y-8">
                   {[
-                    { q: t("faq1Q"), a: t("faq1A") },
-                    { q: t("faq2Q"), a: t("faq2A") },
-                    { q: t("faq3Q"), a: t("faq3A") },
-                    { q: t("faq4Q"), a: t("faq4A") },
-                    { q: t("faq5Q"), a: t("faq5A") },
-                    { q: t("faq6Q"), a: t("faq6A") },
-                    { q: t("faq7Q"), a: t("faq7A") },
-                    { q: t("faq8Q"), a: t("faq8A") },
-                    { q: t("faq9Q"), a: t("faq9A") },
-                    { q: t("faq10Q"), a: t("faq10A") },
+                    { q: "Is NerdsNote free?", a: "Yes. NerdsNote is completely free to use and does not require an account." },
+                    { q: "Where are my notes stored?", a: "All notes are stored locally in your browser using localStorage. Clearing browser data will remove them, so export important notes regularly." },
+                    { q: "Do I need an internet connection?", a: "No. After the first load, NerdsNote works offline in most modern browsers." },
+                    { q: "How do I export a note?", a: "Click the Download button to save the active note as a .txt file." },
+                    { q: "How do I import a .txt file?", a: "Use the Upload button and choose a .txt file. It will create a new note using the file name." },
+                    { q: "Does NerdsNote support Markdown?", a: "NerdsNote is plain text. You can write Markdown syntax and export as .txt for use elsewhere." },
+                    { q: "Can I change the font size or theme?", a: "Yes. Use A+ / A- to adjust text size and the Sun/Moon toggle to switch themes." },
+                    { q: "Is there cloud sync?", a: "Not yet. All notes are stored locally on your device. Export notes to create backups." },
+                    { q: "Which browsers are supported?", a: "NerdsNote supports recent versions of Chrome, Edge, Firefox, and Safari." },
+                    { q: "Who built NerdsNote?", a: "NerdsNote is built by Khueon Studios. Visit khueonstudios.com to learn more." },
                   ].map((item, i) => (
                     <div key={i} className="space-y-2">
                       <h4 className="font-semibold text-foreground">{item.q}</h4>
@@ -304,23 +302,23 @@ export default async function HomePage() {
               <div className="space-y-8">
                 {/* About Card */}
                 <Card className="p-6 border-border/60 bg-primary/5">
-                  <h3 className="text-lg font-bold mb-3">{t("aboutTitle")}</h3>
+                  <h3 className="text-lg font-bold mb-3">About NerdsNote</h3>
                   <div className="space-y-3 text-sm text-muted-foreground">
                     <p>
-                      {t("aboutDesc1")}
+                      NerdsNote is a fast, privacy‑first online notepad built for developers, writers, and anyone who needs a distraction‑free place to jot ideas. It runs in the browser, requires no account, and saves notes locally so your writing remains on your device.
                     </p>
                     <p>
-                      {t("aboutDesc2")}
+                      Designed for speed and clarity, NerdsNote supports dark mode, offline use, keyboard shortcuts, quick search, import/export, and adjustable font size.
                     </p>
                     <div className="flex flex-col gap-2 pt-2">
                       <Button variant="outline" size="sm" asChild className="w-full justify-start">
                         <a href={`https://twitter.com/intent/tweet?text=Check out NerdsNote - a free online notepad!&url=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
-                          {t("shareTwitter")}
+                          Share on Twitter
                         </a>
                       </Button>
                       <Button variant="outline" size="sm" asChild className="w-full justify-start">
                         <a href={`https://www.facebook.com/sharer/sharer.php?u=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
-                          {t("shareFacebook")}
+                          Share on Facebook
                         </a>
                       </Button>
                     </div>
@@ -330,15 +328,15 @@ export default async function HomePage() {
                 {/* SEO Card */}
                 <Card className="p-6 border-border/60">
                   <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                    <Search className="h-4 w-4" /> {t("seoTitle")}
+                    <Search className="h-4 w-4" /> SEO Overview
                   </h3>
                   <div className="space-y-3 text-sm text-muted-foreground">
                     <p>
-                      {t("seoDesc")}
+                      NerdsNote is a free online notepad and minimal note‑taking app. Write instantly in your browser with auto‑save, no sign‑up, and no ads.
                     </p>
-                    <p className="text-xs uppercase tracking-wide font-semibold text-foreground/50 pt-2">{t("keywordsLabel")}</p>
+                    <p className="text-xs uppercase tracking-wide font-semibold text-foreground/50 pt-2">Keywords</p>
                     <p className="text-xs">
-                      {t("keywords")}
+                      free online notepad, distraction‑free writing app, browser‑based notes, local notes, privacy‑friendly notepad, simple notepad for developers.
                     </p>
                   </div>
                 </Card>
@@ -352,20 +350,20 @@ export default async function HomePage() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Shield className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">{t("privacyPolicyTitle")}</h3>
+                  <h3 className="text-lg font-semibold">Privacy Policy</h3>
                 </div>
                 <div className="space-y-4 text-sm text-muted-foreground bg-muted/20 p-6 rounded-xl border border-border/50">
                   <p>
-                    {t("privacyDataStorage")}
+                    Data Storage: All your notes are stored locally in your browser's localStorage. We don't collect, store, or transmit any of your data to our servers unless you explicitly use the Share Links feature.
                   </p>
                   <p>
-                    {t("privacyShareLinks")}
+                    Share Links: When you create a shareable link, your note content is uploaded to our secure servers and stored for 24 hours, after which it is automatically deleted. Anyone with the link can view the note during this period.
                   </p>
                   <p>
-                    {t("privacyNoTracking")}
+                    No Tracking: We don't use cookies, analytics, or any tracking mechanisms. We don't track who views shared notes. Your privacy is completely protected.
                   </p>
                   <p>
-                    {t("privacyLocalOnly")}
+                    Local Only (Default): By default, your notes remain on your device and are never sent to external servers. You have complete control over your data.
                   </p>
                 </div>
               </div>
@@ -374,23 +372,23 @@ export default async function HomePage() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <FileText className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">{t("termsTitle")}</h3>
+                  <h3 className="text-lg font-semibold">Terms and Conditions</h3>
                 </div>
                 <div className="space-y-4 text-sm text-muted-foreground bg-muted/20 p-6 rounded-xl border border-border/50">
                   <p>
-                    {t("termsRisk")}
+                    Use at Your Own Risk: This application is provided "as is" without any warranties. Use it at your own discretion.
                   </p>
                   <p>
-                    {t("termsShareLinks")}
+                    Share Links: By using the Share Links feature, you consent to temporarily upload your note content to our servers. Links expire after 24 hours. Do not share sensitive or confidential information.
                   </p>
                   <p>
-                    {t("termsDataResp")}
+                    Data Responsibility: You are responsible for backing up your notes. We recommend exporting important notes regularly.
                   </p>
                   <p>
-                    {t("termsNoGuarantees")}
+                    No Guarantees: We don't guarantee data persistence. Browser updates, clearing data, or technical issues may result in data loss. Shared links may expire or become unavailable.
                   </p>
                   <p>
-                    {t("termsFreeService")}
+                    Free Service: This is a free application. No payment or registration required.
                   </p>
                 </div>
               </div>
@@ -402,14 +400,14 @@ export default async function HomePage() {
         {/* Built By Section (Sub-footer) */}
         <section className="py-12 border-t border-border/40 bg-muted/5">
           <div className="container mx-auto px-4 text-center">
-            <h3 className="text-lg font-semibold mb-4">{t("builtByTitle")}</h3>
+            <h3 className="text-lg font-semibold mb-4">Built by Khueon Studios</h3>
             <div className="max-w-2xl mx-auto text-muted-foreground space-y-4">
               <p>
-                {t("builtByDesc")}
+                This project is crafted and maintained by Khueon Studios. We create clean, performant, and user‑friendly tools for the web.
               </p>
               <div className="flex justify-center">
                 <a href="https://www.khueonstudios.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-                  {t("visitLink")} <ExternalLink className="h-4 w-4" />
+                  Visit khueonstudios.com <ExternalLink className="h-4 w-4" />
                 </a>
               </div>
             </div>
@@ -423,9 +421,9 @@ export default async function HomePage() {
             <FileText className="h-5 w-5 text-primary opacity-50" />
             <span className="font-semibold text-foreground">NerdsNote</span>
           </div>
-          <p className="mb-4">{t("footerRights", { year: new Date().getFullYear() })}</p>
+          <p className="mb-4">© {new Date().getFullYear()} NerdsNote. All rights reserved.</p>
           <p>
-            {t("footerProjectBy")}{" "}
+            A project by{" "}
             <a href="https://www.khueonstudios.com" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 hover:decoration-primary underline-offset-4 transition-all">
               Khueon Studios
             </a>
