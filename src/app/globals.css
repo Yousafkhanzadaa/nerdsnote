@@ -164,29 +164,106 @@
 }
 
 /* TipTap Editor Overrides for tighter spacing */
+.note-rich-content,
 .ProseMirror {
   font-size: inherit !important;
   line-height: 1.5 !important;
 }
 
+.note-rich-content,
+.note-rich-content p,
+.note-rich-content li > div,
+.note-rich-content h1,
+.note-rich-content h2,
+.note-rich-content h3,
+.note-rich-content h4,
+.note-rich-content h5,
+.note-rich-content h6,
+.ProseMirror,
+.ProseMirror p,
+.ProseMirror li > div,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  white-space: pre-wrap;
+}
+
+.note-rich-content p,
 .ProseMirror p {
   margin-bottom: 0.5rem;
   margin-top: 0.5rem;
   line-height: 1.5;
 }
 
-.ProseMirror ul, 
+.note-rich-content ul,
+.note-rich-content ol,
+.ProseMirror ul,
 .ProseMirror ol {
   margin-top: 0.25rem;
   margin-bottom: 0.25rem;
   padding-left: 1.5rem;
 }
 
+.note-rich-content li,
 .ProseMirror li {
   margin-top: 0.1rem;
   margin-bottom: 0.1rem;
 }
 
+.note-rich-content li p,
 .ProseMirror li p {
   margin: 0;
+}
+
+.note-rich-content ul[data-type="taskList"],
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.note-rich-content li[data-type="taskItem"],
+.ProseMirror li[data-checked] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  list-style: none;
+}
+
+.note-rich-content li[data-type="taskItem"] > label,
+.ProseMirror li[data-checked] > label {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+}
+
+.note-rich-content li[data-type="taskItem"] > label > span,
+.ProseMirror li[data-checked] > label > span {
+  display: none;
+}
+
+.note-rich-content li[data-type="taskItem"] > label > input,
+.ProseMirror li[data-checked] > label > input {
+  margin: 0;
+}
+
+.note-rich-content li[data-type="taskItem"] > div,
+.ProseMirror li[data-checked] > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-rich-content li[data-type="taskItem"][data-checked="true"] > div,
+.ProseMirror li[data-checked="true"] > div {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+
+.note-rich-content li[data-type="taskItem"] > div > ul[data-type="taskList"],
+.ProseMirror li[data-checked] > div > ul[data-type="taskList"] {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
 }

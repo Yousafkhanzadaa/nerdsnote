@@ -12,6 +12,7 @@ import {
   Code,
   Heading1,
   Heading2,
+  ListTodo,
   Minus,
   Plus,
 } from "lucide-react"
@@ -125,6 +126,15 @@ export function EditorToolbar({ editor, fontSize = 16, onFontSizeChange }: Edito
       >
         <ListOrdered className="h-4 w-4" />
       </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleTaskList().run()}
+        className={cn("h-8 w-8 p-0", editor.isActive("taskList") && "bg-accent text-accent-foreground")}
+        title="Checklist"
+      >
+        <ListTodo className="h-4 w-4" />
+      </Button>
 
       <div className="w-px h-4 bg-border mx-1" />
 
@@ -203,6 +213,5 @@ export function EditorToolbar({ editor, fontSize = 16, onFontSizeChange }: Edito
     </div>
   )
 }
-
 
 
