@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, Folder, FolderOpen, HardDrive } from "lucide-react"
@@ -16,18 +16,42 @@ import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
-import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
+import { FileSystemStorage, fileSystemStorage, type Note as FileSystemNote } from "@/lib/file-system-storage"
 
 interface Note {
   id: string
   title: string
   content: string
   lastModified: Date
+  groupId?: string | null
 }
+
+interface NoteGroup {
+  id: string
+  name: string
+  createdAt: Date
+}
+
+const ALL_NOTES_FILTER = "__all__"
+const CORE_NOTES_FILTER = "__core__"
+
+const NOTES_STORAGE_KEY = "nerds-note-data"
+const GROUPS_STORAGE_KEY = "nerds-note-groups"
+const GROUP_FILTER_STORAGE_KEY = "nerds-note-group-filter"
+const THEME_STORAGE_KEY = "nerds-note-theme"
+const SEEN_ANNOUNCEMENT_KEY = "nerds-note-seen-v6-features"
+
+const normalizeGroupName = (name: string): string => name.replace(/\s+/g, " ").trim()
+const createGroupId = (): string => `grp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
 export default function NotepadClient() {
   const [notes, setNotes] = useState<Note[]>([])
+  const [groups, setGroups] = useState<NoteGroup[]>([])
+  const groupsRef = useRef<NoteGroup[]>([])
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
+  const [activeGroupFilter, setActiveGroupFilter] = useState<string>(ALL_NOTES_FILTER)
+  const [newGroupName, setNewGroupName] = useState("")
+  const [isGroupComposerOpen, setIsGroupComposerOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isDistractFree, setIsDistractFree] = useState(false)
@@ -43,6 +67,61 @@ export default function NotepadClient() {
   const [isFileSystemSupported, setIsFileSystemSupported] = useState(false)
   const [connectedDirectoryName, setConnectedDirectoryName] = useState<string | null>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const groupLookup = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups])
+
+  const getGroupNameForStorage = (groupId?: string | null): string | undefined => {
+    if (!groupId) return undefined
+    return groupLookup.get(groupId)?.name
+  }
+
+  const getStorageOptionsForNote = (note: Pick<Note, "groupId">) => ({
+    groupName: getGroupNameForStorage(note.groupId),
+  })
+
+  const mapFileSystemNotesToAppNotes = (fsNotes: FileSystemNote[]): Note[] => {
+    const existingGroups = groupsRef.current
+    const nextGroups = [...existingGroups]
+    const nameToGroupId = new Map<string, string>()
+
+    for (const group of existingGroups) {
+      nameToGroupId.set(group.name.toLowerCase(), group.id)
+    }
+
+    const mappedNotes = fsNotes.map((fsNote) => {
+      const normalizedGroupName = normalizeGroupName(fsNote.groupName ?? "")
+      let groupId: string | null = null
+
+      if (normalizedGroupName.length > 0) {
+        const lookupKey = normalizedGroupName.toLowerCase()
+        const existingGroupId = nameToGroupId.get(lookupKey)
+        if (existingGroupId) {
+          groupId = existingGroupId
+        } else {
+          groupId = createGroupId()
+          nameToGroupId.set(lookupKey, groupId)
+          nextGroups.push({
+            id: groupId,
+            name: normalizedGroupName,
+            createdAt: new Date(),
+          })
+        }
+      }
+
+      return {
+        id: fsNote.id,
+        title: fsNote.title,
+        content: fsNote.content,
+        lastModified: new Date(fsNote.lastModified),
+        groupId,
+      }
+    })
+
+    if (nextGroups.length !== existingGroups.length) {
+      setGroups(nextGroups)
+    }
+
+    return mappedNotes
+  }
 
   const editor = useEditor({
     extensions: [StarterKit, Underline, CharacterCount],
@@ -61,15 +140,39 @@ export default function NotepadClient() {
 
   // Load notes from localStorage on mount
   useEffect(() => {
-    const savedNotes = localStorage.getItem("nerds-note-data")
+    let parsedGroups: NoteGroup[] = []
+    const savedGroups = localStorage.getItem(GROUPS_STORAGE_KEY)
+    if (savedGroups) {
+      try {
+        parsedGroups = JSON.parse(savedGroups).map((group: any) => ({
+          id: group.id,
+          name: group.name,
+          createdAt: new Date(group.createdAt),
+        }))
+      } catch (error) {
+        console.error("Failed to parse saved groups:", error)
+      }
+    }
+    setGroups(parsedGroups)
+    groupsRef.current = parsedGroups
+
+    const validGroupIds = new Set(parsedGroups.map((group) => group.id))
+    const savedNotes = localStorage.getItem(NOTES_STORAGE_KEY)
     if (savedNotes) {
-      const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
-        ...note,
-        lastModified: new Date(note.lastModified),
-      }))
-      setNotes(parsedNotes)
-      if (parsedNotes.length > 0) {
-        setActiveNoteId(parsedNotes[0].id)
+      try {
+        const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
+          id: String(note.id),
+          title: String(note.title ?? "Untitled"),
+          content: String(note.content ?? ""),
+          lastModified: new Date(note.lastModified ?? Date.now()),
+          groupId: typeof note.groupId === "string" && validGroupIds.has(note.groupId) ? note.groupId : null,
+        }))
+        setNotes(parsedNotes)
+        if (parsedNotes.length > 0) {
+          setActiveNoteId(parsedNotes[0].id)
+        }
+      } catch (error) {
+        console.error("Failed to parse saved notes:", error)
       }
     } else {
       // Create initial note
@@ -78,20 +181,26 @@ export default function NotepadClient() {
         title: "NerdsNote",
         content: "Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.",
         lastModified: new Date(),
+        groupId: null,
       }
       setNotes([initialNote])
       setActiveNoteId(initialNote.id)
     }
 
+    const savedGroupFilter = localStorage.getItem(GROUP_FILTER_STORAGE_KEY)
+    if (savedGroupFilter && (savedGroupFilter === ALL_NOTES_FILTER || savedGroupFilter === CORE_NOTES_FILTER || validGroupIds.has(savedGroupFilter))) {
+      setActiveGroupFilter(savedGroupFilter)
+    }
+
     // Check if user has seen the new features announcement
-    const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-v6-features")
+    const hasSeenAnnouncement = localStorage.getItem(SEEN_ANNOUNCEMENT_KEY)
     if (savedNotes && !hasSeenAnnouncement) {
       // Only show to existing users (who have saved notes)
       setShowAnnouncement(true)
     }
 
     // Load theme preference
-    const savedTheme = localStorage.getItem("nerds-note-theme")
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY)
     if (savedTheme === "dark") {
       setIsDarkMode(true)
       document.documentElement.classList.add("dark")
@@ -126,17 +235,26 @@ export default function NotepadClient() {
 
   // Initialize File System Storage
   useEffect(() => {
+    groupsRef.current = groups
+  }, [groups])
+
+  useEffect(() => {
     if (FileSystemStorage.isSupported()) {
       setIsFileSystemSupported(true)
       fileSystemStorage.loadHandle().then(async (success) => {
         if (success) {
           const name = fileSystemStorage.getDirectoryName()
           setConnectedDirectoryName(name)
-          // If connected, load notes from FS
           const fsNotes = await fileSystemStorage.loadNotes()
           if (fsNotes.length > 0) {
-            setNotes(fsNotes)
-            setActiveNoteId(fsNotes[0].id)
+            const mappedNotes = mapFileSystemNotesToAppNotes(fsNotes)
+            setNotes(mappedNotes)
+            setActiveNoteId((currentId) => {
+              if (currentId && mappedNotes.some((note) => note.id === currentId)) {
+                return currentId
+              }
+              return mappedNotes[0]?.id ?? null
+            })
           }
         }
       })
@@ -148,16 +266,21 @@ export default function NotepadClient() {
       await fileSystemStorage.connectDirectory()
       setConnectedDirectoryName(fileSystemStorage.getDirectoryName())
 
+      for (const group of groups) {
+        await fileSystemStorage.ensureGroupDirectory(group.name)
+      }
+
       // Save existing notes to the new folder (Migration)
       for (const note of notes) {
-        await fileSystemStorage.saveNote(note)
+        await fileSystemStorage.saveNote(note, getStorageOptionsForNote(note))
       }
 
       // Reload from FS to ensure consistency
       const fsNotes = await fileSystemStorage.loadNotes()
-      setNotes(fsNotes)
-      if (fsNotes.length > 0 && !activeNoteId) {
-        setActiveNoteId(fsNotes[0].id)
+      const mappedNotes = mapFileSystemNotesToAppNotes(fsNotes)
+      setNotes(mappedNotes)
+      if (mappedNotes.length > 0 && !activeNoteId) {
+        setActiveNoteId(mappedNotes[0].id)
       }
     } catch (error) {
       console.error("Failed to connect directory:", error)
@@ -168,14 +291,22 @@ export default function NotepadClient() {
     await fileSystemStorage.disconnectDirectory()
     setConnectedDirectoryName(null)
     // Reload notes from localStorage
-    const savedNotes = localStorage.getItem("nerds-note-data")
+    const savedNotes = localStorage.getItem(NOTES_STORAGE_KEY)
     if (savedNotes) {
-      const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
-        ...note,
-        lastModified: new Date(note.lastModified),
-      }))
-      setNotes(parsedNotes)
-      if (parsedNotes.length > 0) setActiveNoteId(parsedNotes[0].id)
+      try {
+        const validGroupIds = new Set(groupsRef.current.map((group) => group.id))
+        const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
+          id: String(note.id),
+          title: String(note.title ?? "Untitled"),
+          content: String(note.content ?? ""),
+          lastModified: new Date(note.lastModified ?? Date.now()),
+          groupId: typeof note.groupId === "string" && validGroupIds.has(note.groupId) ? note.groupId : null,
+        }))
+        setNotes(parsedNotes)
+        if (parsedNotes.length > 0) setActiveNoteId(parsedNotes[0].id)
+      } catch (error) {
+        console.error("Failed to parse saved notes while disconnecting folder:", error)
+      }
     } else {
       setNotes([])
       setActiveNoteId(null)
@@ -184,21 +315,41 @@ export default function NotepadClient() {
 
   // Save notes to localStorage whenever notes change
   useEffect(() => {
-    if (notes.length > 0) {
-      localStorage.setItem("nerds-note-data", JSON.stringify(notes))
-    }
+    localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes))
   }, [notes])
+
+  // Save groups to localStorage whenever groups change
+  useEffect(() => {
+    localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(groups))
+  }, [groups])
+
+  useEffect(() => {
+    localStorage.setItem(GROUP_FILTER_STORAGE_KEY, activeGroupFilter)
+  }, [activeGroupFilter])
 
   // Toggle theme
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add("dark")
-      localStorage.setItem("nerds-note-theme", "dark")
+      localStorage.setItem(THEME_STORAGE_KEY, "dark")
     } else {
       document.documentElement.classList.remove("dark")
-      localStorage.setItem("nerds-note-theme", "light")
+      localStorage.setItem(THEME_STORAGE_KEY, "light")
     }
   }, [isDarkMode])
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeGroupFilter === ALL_NOTES_FILTER || activeGroupFilter === CORE_NOTES_FILTER) return
+    if (!groups.some((group) => group.id === activeGroupFilter)) {
+      setActiveGroupFilter(ALL_NOTES_FILTER)
+    }
+  }, [groups, activeGroupFilter])
 
   const activeNote = notes.find((note) => note.id === activeNoteId)
 
@@ -212,15 +363,20 @@ export default function NotepadClient() {
   }, [activeNoteId, activeNote, editor])
 
   const createNewNote = async () => {
+    const defaultGroupId = activeGroupFilter !== ALL_NOTES_FILTER && activeGroupFilter !== CORE_NOTES_FILTER
+      ? activeGroupFilter
+      : null
+
     const newNote: Note = {
       id: Date.now().toString(),
       title: "New Note",
       content: "",
       lastModified: new Date(),
+      groupId: defaultGroupId,
     }
 
     if (connectedDirectoryName) {
-      await fileSystemStorage.saveNote(newNote)
+      await fileSystemStorage.saveNote(newNote, getStorageOptionsForNote(newNote))
     }
 
     setNotes((prev) => [newNote, ...prev])
@@ -234,15 +390,25 @@ export default function NotepadClient() {
 
         // Sync to File System
         if (connectedDirectoryName) {
+          const previousGroupName = getGroupNameForStorage(note.groupId)
+          const nextGroupName = getGroupNameForStorage(updatedNote.groupId)
+          const groupChanged = updates.groupId !== undefined && updates.groupId !== note.groupId
+
           // Check for rename
-          if (updates.title && updates.title !== note.title) {
-            fileSystemStorage.deleteNoteByTitle(note.title)
-            fileSystemStorage.saveNote(updatedNote)
-          } else if (updates.content) {
+          if ((updates.title && updates.title !== note.title) || groupChanged) {
+            fileSystemStorage.deleteNoteByTitle(note.title, {
+              groupName: previousGroupName,
+            })
+            fileSystemStorage.saveNote(updatedNote, {
+              groupName: nextGroupName,
+            })
+          } else if (updates.content !== undefined) {
             // Debounce content saves
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
             saveTimeoutRef.current = setTimeout(() => {
-              fileSystemStorage.saveNote(updatedNote)
+              fileSystemStorage.saveNote(updatedNote, {
+                groupName: nextGroupName,
+              })
             }, 1000)
           }
         }
@@ -256,7 +422,7 @@ export default function NotepadClient() {
   const deleteNote = (id: string) => {
     const noteToDelete = notes.find(n => n.id === id)
     if (noteToDelete && connectedDirectoryName) {
-      fileSystemStorage.deleteNoteByTitle(noteToDelete.title)
+      fileSystemStorage.deleteNoteByTitle(noteToDelete.title, getStorageOptionsForNote(noteToDelete))
     }
 
     setNotes((prev) => {
@@ -305,6 +471,12 @@ export default function NotepadClient() {
         title: file.name.replace(/\.[^/.]+$/, ""),
         content: content.split('\n').map(line => `<p>${line}</p>`).join(''), // Basic conversion to preserve newlines
         lastModified: new Date(),
+        groupId: activeGroupFilter !== ALL_NOTES_FILTER && activeGroupFilter !== CORE_NOTES_FILTER
+          ? activeGroupFilter
+          : null,
+      }
+      if (connectedDirectoryName) {
+        fileSystemStorage.saveNote(newNote, getStorageOptionsForNote(newNote))
       }
       setNotes((prev) => [newNote, ...prev])
       setActiveNoteId(newNote.id)
@@ -312,11 +484,57 @@ export default function NotepadClient() {
     reader.readAsText(file)
   }
 
-  const filteredNotes = notes.filter(
+  const createGroup = async () => {
+    const normalizedName = normalizeGroupName(newGroupName)
+    if (!normalizedName) return
+
+    const existingGroup = groups.find((group) => group.name.toLowerCase() === normalizedName.toLowerCase())
+    if (existingGroup) {
+      setActiveGroupFilter(existingGroup.id)
+      setNewGroupName("")
+      setIsGroupComposerOpen(false)
+      return
+    }
+
+    if (connectedDirectoryName) {
+      try {
+        await fileSystemStorage.ensureGroupDirectory(normalizedName)
+      } catch (error) {
+        console.error("Failed to create group folder:", error)
+      }
+    }
+
+    const newGroup: NoteGroup = {
+      id: createGroupId(),
+      name: normalizedName,
+      createdAt: new Date(),
+    }
+
+    setGroups((prev) => [newGroup, ...prev])
+    setActiveGroupFilter(newGroup.id)
+    setNewGroupName("")
+    setIsGroupComposerOpen(false)
+  }
+
+  const searchedNotes = notes.filter(
     (note) =>
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.content.toLowerCase().includes(searchQuery.toLowerCase()),
   )
+
+  const filteredNotes = searchedNotes.filter((note) => {
+    if (activeGroupFilter === ALL_NOTES_FILTER) return true
+    if (activeGroupFilter === CORE_NOTES_FILTER) return !note.groupId
+    return note.groupId === activeGroupFilter
+  })
+
+  const groupNoteCounts = notes.reduce<Record<string, number>>((acc, note) => {
+    if (note.groupId) {
+      acc[note.groupId] = (acc[note.groupId] || 0) + 1
+    }
+    return acc
+  }, {})
+  const coreNoteCount = notes.filter((note) => !note.groupId).length
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -468,6 +686,75 @@ export default function NotepadClient() {
                   </label>
                 </Button>
               </div>
+
+              <div className="mt-4 rounded-lg border border-sidebar-border/70 bg-muted/20 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Folder className="h-3.5 w-3.5" />
+                    <span>Groups</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsGroupComposerOpen((prev) => !prev)}
+                    className="h-6 px-2 text-[11px]"
+                  >
+                    {isGroupComposerOpen ? "Close" : "New"}
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <Button
+                    size="sm"
+                    variant={activeGroupFilter === ALL_NOTES_FILTER ? "default" : "outline"}
+                    className="h-7 text-[11px] px-2"
+                    onClick={() => setActiveGroupFilter(ALL_NOTES_FILTER)}
+                  >
+                    All ({notes.length})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={activeGroupFilter === CORE_NOTES_FILTER ? "default" : "outline"}
+                    className="h-7 text-[11px] px-2"
+                    onClick={() => setActiveGroupFilter(CORE_NOTES_FILTER)}
+                  >
+                    Core ({coreNoteCount})
+                  </Button>
+                  {groups.map((group) => (
+                    <Button
+                      key={group.id}
+                      size="sm"
+                      variant={activeGroupFilter === group.id ? "default" : "outline"}
+                      className="h-7 text-[11px] px-2 max-w-full"
+                      onClick={() => setActiveGroupFilter(group.id)}
+                      title={group.name}
+                    >
+                      <span className="truncate">{group.name}</span>
+                      <span className="text-[10px] opacity-80">({groupNoteCounts[group.id] || 0})</span>
+                    </Button>
+                  ))}
+                </div>
+
+                {isGroupComposerOpen && (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          void createGroup()
+                        }
+                      }}
+                      placeholder="New group name"
+                      className="h-8 text-xs"
+                    />
+                    <Button size="sm" onClick={() => void createGroup()} className="h-8 text-xs px-3">
+                      Add
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-theme">
@@ -492,6 +779,12 @@ export default function NotepadClient() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium truncate text-sm">{note.title}</h3>
+                          {note.groupId && groupLookup.get(note.groupId) && (
+                            <span className="inline-flex items-center gap-1 mt-1 rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">
+                              <Folder className="h-2.5 w-2.5" />
+                              {groupLookup.get(note.groupId)?.name}
+                            </span>
+                          )}
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {note.content.slice(0, 100)}...
                           </p>
@@ -523,6 +816,12 @@ export default function NotepadClient() {
                     <div className="flex items-center gap-2 text-xs text-primary font-medium px-1">
                       <FolderOpen className="h-3.5 w-3.5" />
                       <span className="truncate">Saving to: {connectedDirectoryName}</span>
+                    </div>
+                    <div className="rounded-md border border-border/60 bg-background/40 px-2 py-1.5">
+                      <p className="text-[11px] font-medium">Grouped notes save into folders automatically</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Ungrouped notes stay in the main folder.
+                      </p>
                     </div>
                     <Button
                       variant="outline"
@@ -557,12 +856,29 @@ export default function NotepadClient() {
               <>
                 {!isDistractFree && (
                   <div className="border-b border-border p-4">
-                    <Input
-                      value={activeNote.title}
-                      onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
-                      className="text-lg font-medium border-none bg-transparent p-0 focus-visible:ring-0"
-                      placeholder="Note title..."
-                    />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <Input
+                        value={activeNote.title}
+                        onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
+                        className="text-lg font-medium border-none bg-transparent p-0 focus-visible:ring-0 sm:flex-1"
+                        placeholder="Note title..."
+                      />
+                      <div className="flex items-center gap-2 sm:w-[240px]">
+                        <Folder className="h-4 w-4 text-muted-foreground" />
+                        <select
+                          value={activeNote.groupId ?? ""}
+                          onChange={(e) => updateNote(activeNote.id, { groupId: e.target.value || null })}
+                          className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                        >
+                          <option value="">Core (Ungrouped)</option>
+                          {groups.map((group) => (
+                            <option key={group.id} value={group.id}>
+                              {group.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -727,7 +1043,7 @@ export default function NotepadClient() {
               <Button
                 className="w-full font-semibold"
                 onClick={() => {
-                  localStorage.setItem("nerds-note-seen-v6-features", "true")
+                  localStorage.setItem(SEEN_ANNOUNCEMENT_KEY, "true")
                   setShowAnnouncement(false)
                 }}
               >
@@ -741,4 +1057,3 @@ export default function NotepadClient() {
     </div >
   )
 }
-

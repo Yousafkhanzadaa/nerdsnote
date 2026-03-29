@@ -6,6 +6,16 @@ export interface Note {
     title: string;
     content: string;
     lastModified: Date;
+    groupName?: string | null;
+}
+
+interface NotePathOptions {
+    groupName?: string | null;
+    useGroupedFolders?: boolean;
+}
+
+interface LoadNotesOptions {
+    includeGroupedFolders?: boolean;
 }
 
 const DIRECTORY_HANDLE_KEY = 'nerds-note-directory-handle';
@@ -108,15 +118,47 @@ export class FileSystemStorage {
     }
 
     /**
+     * Sanitize group name for folder creation.
+     */
+    private getGroupFolderName(groupName: string): string {
+        const safeGroup = groupName.replace(/[\\/:*?"<>|]/g, '-').trim();
+        return safeGroup.length > 0 ? safeGroup : 'Untitled Group';
+    }
+
+    /**
+     * Returns the directory handle where a note should be saved.
+     */
+    private async getTargetDirectory(options: NotePathOptions, createIfMissing = true): Promise<FileSystemDirectoryHandle> {
+        if (!this.directoryHandle) throw new Error('No directory connected');
+        const { useGroupedFolders = true, groupName } = options;
+
+        if (useGroupedFolders && groupName && groupName.trim().length > 0) {
+            const folderName = this.getGroupFolderName(groupName);
+            return await this.directoryHandle.getDirectoryHandle(folderName, { create: createIfMissing });
+        }
+
+        return this.directoryHandle;
+    }
+
+    /**
+     * Creates the folder for a group when directory sync is connected.
+     */
+    async ensureGroupDirectory(groupName: string): Promise<void> {
+        if (!this.directoryHandle) throw new Error('No directory connected');
+        await this.getTargetDirectory({ groupName, useGroupedFolders: true }, true);
+    }
+
+    /**
      * Saves a note to the file system.
      */
-    async saveNote(note: Note): Promise<void> {
+    async saveNote(note: Note, options: NotePathOptions = {}): Promise<void> {
         if (!this.directoryHandle) throw new Error('No directory connected');
 
         const filename = this.getFilename(note.title);
 
         try {
-            const fileHandle = await this.directoryHandle.getFileHandle(filename, { create: true });
+            const targetDirectory = await this.getTargetDirectory(options);
+            const fileHandle = await targetDirectory.getFileHandle(filename, { create: true });
             const writable = await fileHandle.createWritable();
 
             await writable.write(note.content);
@@ -133,12 +175,13 @@ export class FileSystemStorage {
      * Deletes a note from the file system by its TITLE.
      * This is used when renaming (delete old title) or deleting.
      */
-    async deleteNoteByTitle(title: string): Promise<void> {
+    async deleteNoteByTitle(title: string, options: NotePathOptions = {}): Promise<void> {
         if (!this.directoryHandle) return;
 
         const filename = this.getFilename(title);
         try {
-            await this.directoryHandle.removeEntry(filename);
+            const targetDirectory = await this.getTargetDirectory(options, false);
+            await targetDirectory.removeEntry(filename);
             this.managedFiles.delete(filename);
         } catch (error) {
             // If file doesn't exist, ignore
@@ -151,8 +194,9 @@ export class FileSystemStorage {
     /**
      * Loads all txt/md files from the directory as Notes.
      */
-    async loadNotes(): Promise<Note[]> {
+    async loadNotes(options: LoadNotesOptions = {}): Promise<Note[]> {
         if (!this.directoryHandle) return [];
+        const { includeGroupedFolders = true } = options;
 
         const notes: Note[] = [];
         this.managedFiles.clear();
@@ -160,30 +204,65 @@ export class FileSystemStorage {
         // @ts-ignore - values() iterator support varies in TS types
         for await (const entry of this.directoryHandle.values()) {
             if (entry.kind === 'file' && (entry.name.endsWith('.txt') || entry.name.endsWith('.md'))) {
-                try {
-                    const fileHandle = entry as FileSystemFileHandle;
-                    const file = await fileHandle.getFile();
-                    const text = await file.text();
+                await this.readNoteFromHandle({
+                    notes,
+                    fileHandle: entry as FileSystemFileHandle,
+                    filename: entry.name,
+                    groupName: null,
+                    idPrefix: ''
+                });
+                continue;
+            }
 
-                    // Use filename as title (remove extension)
-                    const title = entry.name.replace(/\.(txt|md)$/, '');
-
-                    this.managedFiles.add(entry.name);
-
-                    notes.push({
-                        id: title, // Use title as ID for file-based notes
-                        title: title,
-                        content: text,
-                        lastModified: new Date(file.lastModified)
-                    });
-                } catch (err) {
-                    console.error('Error reading file:', entry.name, err);
+            if (includeGroupedFolders && entry.kind === 'directory') {
+                const groupDirectory = entry as FileSystemDirectoryHandle;
+                // @ts-ignore - values() iterator support varies in TS types
+                for await (const groupedEntry of groupDirectory.values()) {
+                    if (groupedEntry.kind === 'file' && (groupedEntry.name.endsWith('.txt') || groupedEntry.name.endsWith('.md'))) {
+                        await this.readNoteFromHandle({
+                            notes,
+                            fileHandle: groupedEntry as FileSystemFileHandle,
+                            filename: groupedEntry.name,
+                            groupName: groupDirectory.name,
+                            idPrefix: `${groupDirectory.name}/`
+                        });
+                    }
                 }
             }
         }
 
         // Sort by last modified descending
         return notes.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+    }
+
+    /**
+     * Read a note file and push it to the notes array.
+     */
+    private async readNoteFromHandle(params: {
+        notes: Note[];
+        fileHandle: FileSystemFileHandle;
+        filename: string;
+        groupName: string | null;
+        idPrefix: string;
+    }): Promise<void> {
+        const { notes, fileHandle, filename, groupName, idPrefix } = params;
+        try {
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            const title = filename.replace(/\.(txt|md)$/, '');
+
+            this.managedFiles.add(filename);
+
+            notes.push({
+                id: `${idPrefix}${title}`,
+                title,
+                content: text,
+                lastModified: new Date(file.lastModified),
+                groupName
+            });
+        } catch (err) {
+            console.error('Error reading file:', filename, err);
+        }
     }
 }
 
