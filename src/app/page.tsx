@@ -360,7 +360,7 @@ export default function HomePage() {
                     Share Links: When you create a shareable link, your note content is uploaded to our secure servers and stored for 24 hours, after which it is automatically deleted. Anyone with the link can view the note during this period.
                   </p>
                   <p>
-                    No Tracking: We don't use cookies, analytics, or any tracking mechanisms. We don't track who views shared notes. Your privacy is completely protected.
+                    Privacy-Friendly Analytics: We use Vercel Web Analytics to measure aggregate traffic and improve the product. It does not read the contents of your notes, and we don't track who views shared notes.
                   </p>
                   <p>
                     Local Only (Default): By default, your notes remain on your device and are never sent to external servers. You have complete control over your data.

@@ -110,7 +110,7 @@ export default function RootLayout({
             </head>
             <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
                 <Suspense fallback={null}>{children}</Suspense>
-                <Analytics />
+                <Analytics mode="production" />
             </body>
         </html>
     )
