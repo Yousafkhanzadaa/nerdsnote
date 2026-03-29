@@ -1,5 +1,6 @@
 
 import { get, set, del } from 'idb-keyval';
+import { normalizeNoteContent } from '@/lib/note-content';
 
 export interface Note {
     id: string;
@@ -90,6 +91,20 @@ export class FileSystemStorage {
     }
 
     /**
+     * Checks current permission state without triggering a browser prompt.
+     */
+    async hasPermission(mode: 'read' | 'readwrite' = 'readwrite'): Promise<boolean> {
+        if (!this.directoryHandle) return false;
+
+        try {
+            return (await this.directoryHandle.queryPermission({ mode })) === 'granted';
+        } catch (error) {
+            console.error('Failed to query directory permission:', error);
+            return false;
+        }
+    }
+
+    /**
      * Gets the name of the connected directory.
      */
     getDirectoryName(): string | null {
@@ -114,12 +129,13 @@ export class FileSystemStorage {
         if (!this.directoryHandle) throw new Error('No directory connected');
 
         const filename = this.getFilename(note.title);
+        const content = normalizeNoteContent(note.content);
 
         try {
             const fileHandle = await this.directoryHandle.getFileHandle(filename, { create: true });
             const writable = await fileHandle.createWritable();
 
-            await writable.write(note.content);
+            await writable.write(content);
             await writable.close();
 
             this.managedFiles.add(filename);
@@ -144,6 +160,7 @@ export class FileSystemStorage {
             // If file doesn't exist, ignore
             if ((error as DOMException).name !== 'NotFoundError') {
                 console.error(`Failed to delete note with title ${title}:`, error);
+                throw error;
             }
         }
     }
@@ -154,36 +171,41 @@ export class FileSystemStorage {
     async loadNotes(): Promise<Note[]> {
         if (!this.directoryHandle) return [];
 
-        const notes: Note[] = [];
-        this.managedFiles.clear();
+        try {
+            const notes: Note[] = [];
+            this.managedFiles.clear();
 
-        // @ts-ignore - values() iterator support varies in TS types
-        for await (const entry of this.directoryHandle.values()) {
-            if (entry.kind === 'file' && (entry.name.endsWith('.txt') || entry.name.endsWith('.md'))) {
-                try {
-                    const fileHandle = entry as FileSystemFileHandle;
-                    const file = await fileHandle.getFile();
-                    const text = await file.text();
+            // @ts-ignore - values() iterator support varies in TS types
+            for await (const entry of this.directoryHandle.values()) {
+                if (entry.kind === 'file' && (entry.name.endsWith('.txt') || entry.name.endsWith('.md'))) {
+                    try {
+                        const fileHandle = entry as FileSystemFileHandle;
+                        const file = await fileHandle.getFile();
+                        const text = await file.text();
 
-                    // Use filename as title (remove extension)
-                    const title = entry.name.replace(/\.(txt|md)$/, '');
+                        // Use filename as title (remove extension)
+                        const title = entry.name.replace(/\.(txt|md)$/, '');
 
-                    this.managedFiles.add(entry.name);
+                        this.managedFiles.add(entry.name);
 
-                    notes.push({
-                        id: title, // Use title as ID for file-based notes
-                        title: title,
-                        content: text,
-                        lastModified: new Date(file.lastModified)
-                    });
-                } catch (err) {
-                    console.error('Error reading file:', entry.name, err);
+                        notes.push({
+                            id: title, // Use title as ID for file-based notes
+                            title: title,
+                            content: normalizeNoteContent(text),
+                            lastModified: new Date(file.lastModified)
+                        });
+                    } catch (err) {
+                        console.error('Error reading file:', entry.name, err);
+                    }
                 }
             }
-        }
 
-        // Sort by last modified descending
-        return notes.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+            // Sort by last modified descending
+            return notes.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+        } catch (error) {
+            console.error('Failed to load notes from directory:', error);
+            throw error;
+        }
     }
 }
 

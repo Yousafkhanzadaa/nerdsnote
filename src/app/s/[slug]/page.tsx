@@ -2,6 +2,7 @@ import { kv } from "@vercel/kv";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StoredNote } from "@/lib/share-types";
+import { richTextToPlainText } from "@/lib/note-content";
 import SharedNoteView from "./shared-note-view";
 
 interface PageProps {
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     // Extract plain text from content (strip any HTML if present)
-    const plainText = note.content.replace(/<[^>]*>/g, "").trim();
+    const plainText = richTextToPlainText(note.content).trim();
     const title = plainText.slice(0, 40) || "Shared Note";
     const description = plainText.slice(0, 150) || "A note shared via NerdsNote";
 

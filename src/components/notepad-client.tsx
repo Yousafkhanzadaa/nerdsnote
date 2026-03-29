@@ -4,10 +4,11 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, Folder, FolderOpen, HardDrive } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, FolderOpen, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
+import { TaskItem, TaskList } from "@tiptap/extension-list"
 import Underline from "@tiptap/extension-underline"
 import CharacterCount from "@tiptap/extension-character-count"
 import { EditorToolbar } from "@/components/editor-toolbar"
@@ -17,6 +18,7 @@ import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
+import { normalizeNoteContent, notePreviewText, richTextToPlainText } from "@/lib/note-content"
 
 interface Note {
   id: string
@@ -38,18 +40,127 @@ export default function NotepadClient() {
   const [isConnectFolderDialogOpen, setIsConnectFolderDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
   const [showAnnouncement, setShowAnnouncement] = useState(false)
+  const [folderSyncNotice, setFolderSyncNotice] = useState<string | null>(null)
 
   // File System Storage State
   const [isFileSystemSupported, setIsFileSystemSupported] = useState(false)
   const [connectedDirectoryName, setConnectedDirectoryName] = useState<string | null>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  const loadLocalStorageNotes = () => {
+    const savedNotes = localStorage.getItem("nerds-note-data")
+
+    if (savedNotes) {
+      const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
+        ...note,
+        content: normalizeNoteContent(note.content),
+        lastModified: new Date(note.lastModified),
+      }))
+      setNotes(parsedNotes)
+      if (parsedNotes.length > 0) {
+        setActiveNoteId(parsedNotes[0].id)
+      } else {
+        setActiveNoteId(null)
+      }
+      return savedNotes
+    }
+
+    setNotes([])
+    setActiveNoteId(null)
+    return null
+  }
+
+  const isFileSystemPermissionError = (error: unknown) =>
+    error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")
+
+  const handleFolderSyncUnavailable = async (
+    message = "Folder access expired. Reconnect your folder to keep syncing to local files.",
+  ) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+
+    await fileSystemStorage.disconnectDirectory()
+    setConnectedDirectoryName(null)
+    setFolderSyncNotice(message)
+  }
+
+  const ensureDirectoryWriteAccess = async (interactive = false) => {
+    if (!connectedDirectoryName) {
+      return false
+    }
+
+    try {
+      const hasAccess = interactive
+        ? await fileSystemStorage.verifyPermission("readwrite")
+        : await fileSystemStorage.hasPermission("readwrite")
+
+      if (hasAccess) {
+        setFolderSyncNotice(null)
+        return true
+      }
+    } catch (error) {
+      console.error("Failed to verify folder permission:", error)
+    }
+
+    await handleFolderSyncUnavailable()
+    return false
+  }
+
+  const saveNoteToDirectory = async (note: Note, interactive = false) => {
+    if (!(await ensureDirectoryWriteAccess(interactive))) {
+      return false
+    }
+
+    try {
+      await fileSystemStorage.saveNote(note)
+      setFolderSyncNotice(null)
+      return true
+    } catch (error) {
+      if (isFileSystemPermissionError(error)) {
+        await handleFolderSyncUnavailable()
+      } else {
+        console.error("Failed to sync note to folder:", error)
+      }
+      return false
+    }
+  }
+
+  const deleteNoteFromDirectory = async (title: string) => {
+    if (!(await ensureDirectoryWriteAccess(false))) {
+      return false
+    }
+
+    try {
+      await fileSystemStorage.deleteNoteByTitle(title)
+      setFolderSyncNotice(null)
+      return true
+    } catch (error) {
+      if (isFileSystemPermissionError(error)) {
+        await handleFolderSyncUnavailable()
+      } else {
+        console.error("Failed to delete note from folder:", error)
+      }
+      return false
+    }
+  }
+
   const editor = useEditor({
-    extensions: [StarterKit, Underline, CharacterCount],
+    extensions: [
+      StarterKit,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Underline,
+      CharacterCount,
+    ],
     immediatelyRender: false,
+    parseOptions: {
+      preserveWhitespace: "full",
+    },
     editorProps: {
       attributes: {
-        class: "prose dark:prose-invert focus:outline-none max-w-none h-full min-h-[50vh] px-4 py-2",
+        class: "note-rich-content prose dark:prose-invert focus:outline-none max-w-none h-full min-h-[50vh] px-4 py-2",
       },
     },
     onUpdate: ({ editor }) => {
@@ -61,22 +172,13 @@ export default function NotepadClient() {
 
   // Load notes from localStorage on mount
   useEffect(() => {
-    const savedNotes = localStorage.getItem("nerds-note-data")
-    if (savedNotes) {
-      const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
-        ...note,
-        lastModified: new Date(note.lastModified),
-      }))
-      setNotes(parsedNotes)
-      if (parsedNotes.length > 0) {
-        setActiveNoteId(parsedNotes[0].id)
-      }
-    } else {
+    const savedNotes = loadLocalStorageNotes()
+    if (!savedNotes) {
       // Create initial note
       const initialNote: Note = {
         id: "1",
         title: "NerdsNote",
-        content: "Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.",
+        content: normalizeNoteContent("Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser."),
         lastModified: new Date(),
       }
       setNotes([initialNote])
@@ -109,7 +211,7 @@ export default function NotepadClient() {
             const importedNote: Note = {
               id: Date.now().toString(),
               title: "New Note",
-              content: data.content,
+              content: normalizeNoteContent(data.content),
               lastModified: new Date(),
             }
             setNotes(prev => [importedNote, ...prev])
@@ -130,13 +232,28 @@ export default function NotepadClient() {
       setIsFileSystemSupported(true)
       fileSystemStorage.loadHandle().then(async (success) => {
         if (success) {
+          const hasWriteAccess = await fileSystemStorage.hasPermission("readwrite")
+          if (!hasWriteAccess) {
+            await handleFolderSyncUnavailable()
+            return
+          }
+
           const name = fileSystemStorage.getDirectoryName()
           setConnectedDirectoryName(name)
+          setFolderSyncNotice(null)
           // If connected, load notes from FS
-          const fsNotes = await fileSystemStorage.loadNotes()
-          if (fsNotes.length > 0) {
-            setNotes(fsNotes)
-            setActiveNoteId(fsNotes[0].id)
+          try {
+            const fsNotes = await fileSystemStorage.loadNotes()
+            if (fsNotes.length > 0) {
+              setNotes(fsNotes)
+              setActiveNoteId(fsNotes[0].id)
+            }
+          } catch (error) {
+            if (isFileSystemPermissionError(error)) {
+              await handleFolderSyncUnavailable()
+            } else {
+              console.error("Failed to load notes from connected folder:", error)
+            }
           }
         }
       })
@@ -146,7 +263,13 @@ export default function NotepadClient() {
   const handleConnectDirectory = async () => {
     try {
       await fileSystemStorage.connectDirectory()
-      setConnectedDirectoryName(fileSystemStorage.getDirectoryName())
+      const directoryName = fileSystemStorage.getDirectoryName()
+      if (!directoryName) {
+        return
+      }
+
+      setConnectedDirectoryName(directoryName)
+      setFolderSyncNotice(null)
 
       // Save existing notes to the new folder (Migration)
       for (const note of notes) {
@@ -161,25 +284,18 @@ export default function NotepadClient() {
       }
     } catch (error) {
       console.error("Failed to connect directory:", error)
+      if (isFileSystemPermissionError(error)) {
+        await handleFolderSyncUnavailable("Folder access was denied. Reconnect the folder to enable local sync.")
+      }
     }
   }
 
   const handleDisconnectDirectory = async () => {
     await fileSystemStorage.disconnectDirectory()
     setConnectedDirectoryName(null)
+    setFolderSyncNotice(null)
     // Reload notes from localStorage
-    const savedNotes = localStorage.getItem("nerds-note-data")
-    if (savedNotes) {
-      const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
-        ...note,
-        lastModified: new Date(note.lastModified),
-      }))
-      setNotes(parsedNotes)
-      if (parsedNotes.length > 0) setActiveNoteId(parsedNotes[0].id)
-    } else {
-      setNotes([])
-      setActiveNoteId(null)
-    }
+    loadLocalStorageNotes()
   }
 
   // Save notes to localStorage whenever notes change
@@ -188,6 +304,14 @@ export default function NotepadClient() {
       localStorage.setItem("nerds-note-data", JSON.stringify(notes))
     }
   }, [notes])
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Toggle theme
   useEffect(() => {
@@ -206,7 +330,12 @@ export default function NotepadClient() {
   const prevActiveNoteIdRef = useRef<string | null>(null)
   useEffect(() => {
     if (editor && activeNote && activeNote.id !== prevActiveNoteIdRef.current) {
-      editor.commands.setContent(activeNote.content)
+      editor.commands.setContent(normalizeNoteContent(activeNote.content), {
+        emitUpdate: false,
+        parseOptions: {
+          preserveWhitespace: "full",
+        },
+      })
       prevActiveNoteIdRef.current = activeNote.id
     }
   }, [activeNoteId, activeNote, editor])
@@ -219,12 +348,12 @@ export default function NotepadClient() {
       lastModified: new Date(),
     }
 
-    if (connectedDirectoryName) {
-      await fileSystemStorage.saveNote(newNote)
-    }
-
     setNotes((prev) => [newNote, ...prev])
     setActiveNoteId(newNote.id)
+
+    if (connectedDirectoryName) {
+      void saveNoteToDirectory(newNote, true)
+    }
   }
 
   const updateNote = (id: string, updates: Partial<Note>) => {
@@ -235,14 +364,29 @@ export default function NotepadClient() {
         // Sync to File System
         if (connectedDirectoryName) {
           // Check for rename
-          if (updates.title && updates.title !== note.title) {
-            fileSystemStorage.deleteNoteByTitle(note.title)
-            fileSystemStorage.saveNote(updatedNote)
-          } else if (updates.content) {
+          if (typeof updates.title === "string" && updates.title !== note.title) {
+            void (async () => {
+              if (!(await ensureDirectoryWriteAccess(false))) {
+                return
+              }
+
+              try {
+                await fileSystemStorage.deleteNoteByTitle(note.title)
+                await fileSystemStorage.saveNote(updatedNote)
+                setFolderSyncNotice(null)
+              } catch (error) {
+                if (isFileSystemPermissionError(error)) {
+                  await handleFolderSyncUnavailable()
+                } else {
+                  console.error("Failed to rename note in folder:", error)
+                }
+              }
+            })()
+          } else if (Object.prototype.hasOwnProperty.call(updates, "content")) {
             // Debounce content saves
             if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
             saveTimeoutRef.current = setTimeout(() => {
-              fileSystemStorage.saveNote(updatedNote)
+              void saveNoteToDirectory(updatedNote, false)
             }, 1000)
           }
         }
@@ -256,7 +400,7 @@ export default function NotepadClient() {
   const deleteNote = (id: string) => {
     const noteToDelete = notes.find(n => n.id === id)
     if (noteToDelete && connectedDirectoryName) {
-      fileSystemStorage.deleteNoteByTitle(noteToDelete.title)
+      void deleteNoteFromDirectory(noteToDelete.title)
     }
 
     setNotes((prev) => {
@@ -272,16 +416,7 @@ export default function NotepadClient() {
 
   const exportNote = () => {
     if (!activeNote) return
-    // Use editor to get plain text if available, otherwise strip HTML
-    let content = activeNote.content
-    if (editor) {
-      content = editor.getText()
-    } else {
-      // Fallback: simple strip tags (not perfect but works for basic)
-      const tmp = document.createElement("DIV")
-      tmp.innerHTML = content
-      content = tmp.textContent || ""
-    }
+    const content = richTextToPlainText(editor?.getHTML() || activeNote.content)
 
     const blob = new Blob([content], { type: "text/plain" })
     const url = URL.createObjectURL(blob)
@@ -299,11 +434,10 @@ export default function NotepadClient() {
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
-      // Import as plain text, TipTap will handle it (wrap in <p>)
       const newNote: Note = {
         id: Date.now().toString(),
         title: file.name.replace(/\.[^/.]+$/, ""),
-        content: content.split('\n').map(line => `<p>${line}</p>`).join(''), // Basic conversion to preserve newlines
+        content: normalizeNoteContent(content),
         lastModified: new Date(),
       }
       setNotes((prev) => [newNote, ...prev])
@@ -315,7 +449,7 @@ export default function NotepadClient() {
   const filteredNotes = notes.filter(
     (note) =>
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase()),
+      richTextToPlainText(note.content).toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   // Keyboard shortcuts
@@ -493,7 +627,7 @@ export default function NotepadClient() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium truncate text-sm">{note.title}</h3>
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {note.content.slice(0, 100)}...
+                            {notePreviewText(note.content) || "Empty note"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">{note.lastModified.toLocaleDateString()}</p>
                         </div>
@@ -524,6 +658,9 @@ export default function NotepadClient() {
                       <FolderOpen className="h-3.5 w-3.5" />
                       <span className="truncate">Saving to: {connectedDirectoryName}</span>
                     </div>
+                    {folderSyncNotice && (
+                      <p className="text-[11px] text-amber-600 px-1 leading-relaxed">{folderSyncNotice}</p>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -534,15 +671,20 @@ export default function NotepadClient() {
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsConnectFolderDialogOpen(true)}
-                    className="w-full text-xs h-8 gap-2 bg-background/50"
-                  >
-                    <HardDrive className="h-3.5 w-3.5" />
-                    Connect Local Folder
-                  </Button>
+                  <div className="space-y-2">
+                    {folderSyncNotice && (
+                      <p className="text-[11px] text-amber-600 leading-relaxed">{folderSyncNotice}</p>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsConnectFolderDialogOpen(true)}
+                      className="w-full text-xs h-8 gap-2 bg-background/50"
+                    >
+                      <HardDrive className="h-3.5 w-3.5" />
+                      Connect Local Folder
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -604,7 +746,7 @@ export default function NotepadClient() {
                 <span>Characters: {editor.storage.characterCount?.characters() || 0}</span>
               </div>
               <div className="flex gap-4">
-                <span>Auto-saved</span>
+                <span>{connectedDirectoryName ? "Synced to folder" : folderSyncNotice ? "Saved locally only" : "Auto-saved"}</span>
                 <span>Last modified: {activeNote.lastModified.toLocaleTimeString()}</span>
               </div>
             </footer>
@@ -741,4 +883,3 @@ export default function NotepadClient() {
     </div >
   )
 }
-

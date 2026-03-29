@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
-import { FileText, ExternalLink, Clock, Calendar, ArrowUpRight } from "lucide-react";
+import { FileText, Clock, Calendar, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Link from 'next/link';
@@ -32,20 +32,19 @@ export default function SharedNoteView({
                 "h1", "h2", "h3", "h4", "h5", "h6",
                 "ul", "ol", "li",
                 "blockquote", "pre", "code",
-                "a", "span", "div"
+                "a", "span", "div", "label", "input"
             ],
-            ALLOWED_ATTR: ["href", "target", "rel", "class"],
+            ALLOWED_ATTR: ["href", "target", "rel", "class", "type", "checked", "disabled", "data-type", "data-checked"],
         });
-        setSanitizedContent(clean);
-    }, [content]);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(clean, "text/html");
 
-    const formatDate = (date: Date) => {
-        return date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
+        doc.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+            input.setAttribute("disabled", "disabled");
         });
-    };
+
+        setSanitizedContent(doc.body.innerHTML);
+    }, [content]);
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -56,7 +55,7 @@ export default function SharedNoteView({
                         <FileText className="h-6 w-6 text-primary" />
                         <h1 className="text-xl font-bold text-primary">NerdsNote</h1>
                     </a>
-                    <Button onClick={() => window.open('/', '_blank')} variant="outline" size="sm">
+                    <Button onClick={() => window.open(openInAppUrl, '_blank')} variant="outline" size="sm">
                         <ArrowUpRight className="h-4 w-4 mr-2" />
                         Open in App
                     </Button>
@@ -82,7 +81,7 @@ export default function SharedNoteView({
                 {/* Note content with TipTap-like styling */}
                 <Card className="p-6 bg-card">
                     <div
-                        className="prose prose-neutral dark:prose-invert max-w-none
+                        className="note-rich-content prose prose-neutral dark:prose-invert max-w-none
                             prose-headings:font-semibold prose-headings:text-foreground
                             prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
                             prose-p:text-foreground prose-p:leading-relaxed
@@ -95,6 +94,7 @@ export default function SharedNoteView({
                             prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono
                             prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
                             prose-a:text-primary prose-a:underline hover:prose-a:no-underline
+                            [&_input]:pointer-events-none
                             [&_u]:underline [&_s]:line-through [&_strike]:line-through"
                         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                     />
