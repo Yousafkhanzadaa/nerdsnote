@@ -71,34 +71,6 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* Browser Mockup */}
-            <div className="relative max-w-5xl mx-auto rounded-xl border border-border bg-background shadow-2xl overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-              {/* Fake Browser Toolbar */}
-              <div className="bg-muted/30 border-b border-border px-4 py-3 flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-400/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-yellow-400/80"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-400/80"></div>
-                </div>
-                <div className="ml-4 flex-1 max-w-sm mx-auto bg-background/50 rounded-md h-6 w-full"></div>
-              </div>
-
-              {/* Fake Content */}
-              <div className="p-8 md:p-12 text-left min-h-[300px] bg-background">
-                <div className="h-8 w-3/4 bg-foreground/10 rounded mb-6 animate-pulse"></div>
-                <div className="space-y-3">
-                  <div className="h-4 w-full bg-foreground/5 rounded animate-pulse delay-75"></div>
-                  <div className="h-4 w-11/12 bg-foreground/5 rounded animate-pulse delay-100"></div>
-                  <div className="h-4 w-5/6 bg-foreground/5 rounded animate-pulse delay-150"></div>
-                  <div className="h-4 w-full bg-foreground/5 rounded animate-pulse delay-200"></div>
-                </div>
-                <div className="mt-8 p-4 border border-dashed border-border rounded-lg bg-muted/20 flex items-center justify-center text-muted-foreground text-sm">
-                  Your distraction-free writing space looks like this
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
