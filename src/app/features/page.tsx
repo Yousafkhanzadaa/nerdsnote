@@ -162,6 +162,9 @@ export default function FeaturesPage() {
             <Link href="/terms" className="hover:text-foreground">
               Terms
             </Link>
+            <Link href="/contact" className="hover:text-foreground">
+              Contact
+            </Link>
             <Link href="/" className="hover:text-foreground">
               Home
             </Link>

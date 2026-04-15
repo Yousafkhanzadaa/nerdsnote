@@ -351,6 +351,9 @@ export default function HomePage() {
             <Link href="/terms" className="hover:text-foreground">
               Terms
             </Link>
+            <Link href="/contact" className="hover:text-foreground">
+              Contact
+            </Link>
             <Link href="/features" className="hover:text-foreground">
               Features
             </Link>

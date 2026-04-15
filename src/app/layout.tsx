@@ -12,6 +12,7 @@ const organization = {
     "@type": "Organization",
     "name": "Khueon Studios",
     "url": "https://www.khueonstudios.com",
+    "email": "khueonstudios@gmail.com",
 }
 
 const structuredData = [
