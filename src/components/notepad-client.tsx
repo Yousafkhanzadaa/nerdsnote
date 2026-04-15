@@ -27,13 +27,32 @@ interface Note {
   lastModified: Date
 }
 
+const DEFAULT_FONT_SIZE = 16
+const MIN_FONT_SIZE = 12
+const MAX_FONT_SIZE = 24
+const FONT_SIZE_STORAGE_KEY = "nerds-note-font-size"
+
+function parseStoredFontSize(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const parsedValue = Number(value)
+
+  if (!Number.isFinite(parsedValue)) {
+    return null
+  }
+
+  return Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, parsedValue))
+}
+
 export default function NotepadClient() {
   const [notes, setNotes] = useState<Note[]>([])
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isDistractFree, setIsDistractFree] = useState(false)
-  const [fontSize, setFontSize] = useState(16)
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
@@ -199,6 +218,11 @@ export default function NotepadClient() {
       document.documentElement.classList.add("dark")
     }
 
+    const savedFontSize = parseStoredFontSize(localStorage.getItem(FONT_SIZE_STORAGE_KEY))
+    if (savedFontSize !== null) {
+      setFontSize(savedFontSize)
+    }
+
     // Handle openShared URL parameter to import shared notes
     const urlParams = new URLSearchParams(window.location.search)
     const openSharedSlug = urlParams.get("openShared")
@@ -323,6 +347,10 @@ export default function NotepadClient() {
       localStorage.setItem("nerds-note-theme", "light")
     }
   }, [isDarkMode])
+
+  useEffect(() => {
+    localStorage.setItem(FONT_SIZE_STORAGE_KEY, String(fontSize))
+  }, [fontSize])
 
   const activeNote = notes.find((note) => note.id === activeNoteId)
 
