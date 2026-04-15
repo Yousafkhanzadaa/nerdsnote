@@ -442,6 +442,10 @@ export default function NotepadClient() {
       }
       setNotes((prev) => [newNote, ...prev])
       setActiveNoteId(newNote.id)
+
+      if (connectedDirectoryName) {
+        void saveNoteToDirectory(newNote, true)
+      }
     }
     reader.readAsText(file)
   }
@@ -451,6 +455,7 @@ export default function NotepadClient() {
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       richTextToPlainText(note.content).toLowerCase().includes(searchQuery.toLowerCase()),
   )
+  const isSavingToFolder = Boolean(connectedDirectoryName)
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -523,6 +528,30 @@ export default function NotepadClient() {
             </div>
 
             <div className="flex items-center gap-2">
+              {isFileSystemSupported && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (!connectedDirectoryName) {
+                      setIsConnectFolderDialogOpen(true)
+                    }
+                  }}
+                  className={cn(
+                    "hidden max-w-56 gap-2 border-border/70 bg-background/70 text-xs sm:flex",
+                    connectedDirectoryName && "border-primary/30 bg-primary/5 text-primary",
+                  )}
+                >
+                  {connectedDirectoryName ? (
+                    <FolderOpen className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <HardDrive className="h-4 w-4 shrink-0" />
+                  )}
+                  <span className="truncate">
+                    {connectedDirectoryName ? `Saving to ${connectedDirectoryName}` : "Browser storage"}
+                  </span>
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => setIsCreateLinkDialogOpen(true)} className="text-primary font-medium" disabled={!activeNote}>
                 <Link2 className="h-4 w-4 mr-2" />
                 Create Link
@@ -602,6 +631,77 @@ export default function NotepadClient() {
                   </label>
                 </Button>
               </div>
+
+              {isFileSystemSupported && (
+                <Card
+                  className={cn(
+                    "mt-4 gap-3 rounded-md border-border/70 bg-background/70 p-3 shadow-none",
+                    isSavingToFolder && "border-primary/30 bg-primary/5",
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "mt-0.5 rounded-md bg-muted p-2 text-muted-foreground",
+                        isSavingToFolder && "bg-primary/10 text-primary",
+                      )}
+                    >
+                      {isSavingToFolder ? (
+                        <FolderOpen className="h-4 w-4" />
+                      ) : (
+                        <HardDrive className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">
+                        {isSavingToFolder ? "Storage: Local folder" : "Storage: Browser only"}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
+                        {isSavingToFolder
+                          ? `Saving to: ${connectedDirectoryName}`
+                          : "Notes are saved in this browser."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {folderSyncNotice && (
+                    <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                      {folderSyncNotice}
+                    </p>
+                  )}
+
+                  {isSavingToFolder ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsConnectFolderDialogOpen(true)}
+                        className="h-8 text-xs"
+                      >
+                        Change folder
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDisconnectDirectory}
+                        className="h-8 text-xs text-muted-foreground"
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsConnectFolderDialogOpen(true)}
+                      className="h-8 w-full gap-2 border-primary/40 bg-primary/5 text-xs text-primary hover:bg-primary/10"
+                    >
+                      <HardDrive className="h-3.5 w-3.5" />
+                      Save to a local folder
+                    </Button>
+                  )}
+                </Card>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-theme">
@@ -649,45 +749,6 @@ export default function NotepadClient() {
               )}
             </div>
 
-            {/* Storage Footer */}
-            {isFileSystemSupported && (
-              <div className="p-3 border-t border-sidebar-border bg-muted/20">
-                {connectedDirectoryName ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-xs text-primary font-medium px-1">
-                      <FolderOpen className="h-3.5 w-3.5" />
-                      <span className="truncate">Saving to: {connectedDirectoryName}</span>
-                    </div>
-                    {folderSyncNotice && (
-                      <p className="text-[11px] text-amber-600 px-1 leading-relaxed">{folderSyncNotice}</p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDisconnectDirectory}
-                      className="w-full text-xs h-7"
-                    >
-                      Disconnect Folder
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {folderSyncNotice && (
-                      <p className="text-[11px] text-amber-600 leading-relaxed">{folderSyncNotice}</p>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsConnectFolderDialogOpen(true)}
-                      className="w-full text-xs h-8 gap-2 bg-background/50"
-                    >
-                      <HardDrive className="h-3.5 w-3.5" />
-                      Connect Local Folder
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
           </aside>
         )}
 
@@ -725,14 +786,31 @@ export default function NotepadClient() {
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-center">
-                <div>
+                <div className="max-w-xl px-4">
                   <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <h2 className="text-xl font-medium text-muted-foreground mb-2">Welcome to NerdsNote: Free Online Notepad for Note Taking</h2>
-                  <p className="text-muted-foreground mb-4">Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.</p>
-                  <Button onClick={createNewNote}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Note
-                  </Button>
+                  <p className="text-muted-foreground mb-5">Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.</p>
+                  <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+                    <Button onClick={createNewNote}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Note
+                    </Button>
+                    {isFileSystemSupported && !connectedDirectoryName && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsConnectFolderDialogOpen(true)}
+                        className="gap-2 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                      >
+                        <HardDrive className="h-4 w-4" />
+                        Save notes to a local folder
+                      </Button>
+                    )}
+                  </div>
+                  {connectedDirectoryName && (
+                    <p className="mt-4 text-sm text-primary">
+                      New notes will save to {connectedDirectoryName}.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -746,7 +824,7 @@ export default function NotepadClient() {
                 <span>Characters: {editor.storage.characterCount?.characters() || 0}</span>
               </div>
               <div className="flex gap-4">
-                <span>{connectedDirectoryName ? "Synced to folder" : folderSyncNotice ? "Saved locally only" : "Auto-saved"}</span>
+                <span>{connectedDirectoryName ? `Saving to ${connectedDirectoryName}` : folderSyncNotice ? "Saved locally only" : "Auto-saved in browser"}</span>
                 <span>Last modified: {activeNote.lastModified.toLocaleTimeString()}</span>
               </div>
             </footer>
