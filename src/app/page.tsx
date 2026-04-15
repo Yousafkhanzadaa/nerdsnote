@@ -1,131 +1,228 @@
 import type { Metadata } from "next"
+import Image from "next/image"
+import Link from "next/link"
+import {
+  ArrowRight,
+  CheckCircle2,
+  Download,
+  FileText,
+  HardDrive,
+  Moon,
+  Search,
+  Shield,
+  WifiOff,
+  Zap,
+} from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { FileText, Shield, BookOpen, Info, ExternalLink, Download, Upload, Search, Moon, Sun, Maximize2, Plus, ArrowRight, Zap, Globe, Laptop } from "lucide-react"
-import Link from "next/link"
 
 export const metadata: Metadata = {
-  title: "NerdsNote | Distraction-Free Online Notepad",
-  description: "Write immediately in your browser. Auto-saving, offline-capable, and privacy-first.",
+  title: "NerdsNote - Free Online Notepad for Private Notes",
+  description:
+    "Use NerdsNote as a free online notepad for quick notes, private writing, local auto-save, offline access, dark mode, search, import, and export. No account required.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "NerdsNote - Free Online Notepad",
+    description:
+      "A private browser notepad with local auto-save, offline access, search, dark mode, import, and export. No login required.",
+    url: "https://nerdsnote.com",
+    type: "website",
+  },
 }
+
+const coreBenefits = [
+  {
+    title: "Private browser notes",
+    description:
+      "Your notes stay on your device by default, so quick ideas, drafts, and personal lists do not need an account.",
+    icon: Shield,
+  },
+  {
+    title: "Local auto-save",
+    description:
+      "NerdsNote saves as you write, helping protect drafts from tab closes, refreshes, and interrupted sessions.",
+    icon: Zap,
+  },
+  {
+    title: "Offline writing",
+    description:
+      "Keep writing after the first load, even when the connection drops or you need a focused browser notepad.",
+    icon: WifiOff,
+  },
+]
+
+const features = [
+  "Free online notepad with no login",
+  "Dark mode for comfortable writing",
+  "Instant search across saved notes",
+  "Import .txt and .md files",
+  "Export notes as text files",
+  "Optional local folder sync in supported browsers",
+]
+
+const workflows = [
+  {
+    title: "Quick notes",
+    description:
+      "Capture ideas, meeting notes, lists, and reminders without opening a heavy document editor.",
+  },
+  {
+    title: "Private drafts",
+    description:
+      "Draft copy, code snippets, outlines, and personal text locally before moving it anywhere else.",
+  },
+  {
+    title: "Portable text files",
+    description:
+      "Import and export plain text so your notes remain simple, readable, and easy to move.",
+  },
+]
+
+const faqs = [
+  {
+    question: "Is NerdsNote free?",
+    answer:
+      "Yes. NerdsNote is a free online notepad and does not require an account to start writing.",
+  },
+  {
+    question: "Where are my notes stored?",
+    answer:
+      "Notes are stored locally in your browser by default. Export important notes if you plan to clear browser data.",
+  },
+  {
+    question: "Does NerdsNote work offline?",
+    answer:
+      "Yes. After the app loads, you can keep using the notepad in modern browsers even if the connection drops.",
+  },
+  {
+    question: "Can I import and export notes?",
+    answer:
+      "Yes. You can import text and Markdown files, then export individual notes as plain text files.",
+  },
+  {
+    question: "Does NerdsNote support Markdown?",
+    answer:
+      "You can write Markdown-style text and import .md files. Notes export as portable plain text.",
+  },
+  {
+    question: "Is there cloud sync?",
+    answer:
+      "Not by default. Notes stay local unless you create a share link or use an optional local folder workflow in a supported browser.",
+  },
+]
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-      {/* Navbar */}
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight">NerdsNote</h1>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <Image
+              src="/web-app-manifest-192x192.png"
+              alt="NerdsNote app icon"
+              width={32}
+              height={32}
+              className="rounded-md"
+              priority
+            />
+            <span>NerdsNote</span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/features" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">See Features</Button>
-            </Link>
-            <Link href="/notepad">
-              <Button size="sm" className="font-medium shadow-lg shadow-primary/20 transition-all hover:shadow-primary/40 hover:-translate-y-0.5">
-                Start Writing
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
+          <nav aria-label="Primary navigation" className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/features">Features</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/notepad">
+                Start writing
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+          </nav>
         </div>
       </header>
 
-      <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative pt-20 pb-32 overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]">
-            <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-primary/5 blur-[100px]"></div>
-          </div>
-
-          <div className="container mx-auto px-4 text-center">
-            <div className="inline-flex items-center rounded-full border border-border bg-background/50 px-3 py-1 text-sm text-muted-foreground mb-6 backdrop-blur-sm">
-              <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-              No Login Required • Free Forever
+      <main>
+        <section className="border-b border-border">
+          <div className="container mx-auto max-w-5xl px-4 py-16 md:py-20">
+            <div className="mb-5 flex items-center gap-3 text-sm font-medium text-muted-foreground">
+              <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
+              <span>Free online notepad. No login. Local auto-save.</span>
             </div>
-
-            <h1 className="max-w-4xl mx-auto text-5xl md:text-7xl font-bold tracking-tight mb-8 bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-transparent pb-2">
-              The Distraction‑Free <br /> Online Notepad.
+            <h1 className="max-w-4xl text-4xl font-bold tracking-tight md:text-6xl">
+              A private online notepad for fast, focused writing.
             </h1>
-
-            <p className="max-w-2xl mx-auto text-xl text-muted-foreground mb-10 leading-relaxed">
-              Write immediately in your browser. Auto-saving, offline-capable, and privacy-first. Just you and your words.
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
+              NerdsNote opens straight into a clean browser notepad with local
+              storage, offline access, dark mode, search, import, and export.
             </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-              <Link href="/notepad">
-                <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all hover:-translate-y-1">
-                  Start Writing
-                  <ArrowRight className="h-5 w-5 ml-2" />
-                </Button>
-              </Link>
-              <Link href="/features">
-                <Button variant="outline" size="lg" className="h-14 px-8 text-lg rounded-full border-2 hover:bg-muted/50">
-                  See Features
-                </Button>
-              </Link>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" asChild>
+                <Link href="/notepad">
+                  Open the notepad
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+              <Button variant="outline" size="lg" asChild>
+                <Link href="/features">See all features</Link>
+              </Button>
             </div>
-
           </div>
         </section>
 
-        {/* Features Grid */}
-        <section className="py-24 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold mb-4">
-                Everything you need,<br />nothing you don't.
+        <section className="border-b border-border bg-muted/25">
+          <div className="container mx-auto grid max-w-6xl gap-4 px-4 py-12 md:grid-cols-3">
+            {coreBenefits.map(({ title, description, icon: Icon }) => (
+              <Card key={title} className="rounded-md p-6">
+                <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+                <h2 className="text-xl font-semibold">{title}</h2>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {description}
+                </p>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-b border-border">
+          <div className="container mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-[1fr_1.2fr]">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">
+                Everything a simple note taking app should keep close.
               </h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Built for speed and focus. We removed the clutter so you can focus on the content.
+              <p className="mt-4 leading-7 text-muted-foreground">
+                Use it for quick notes, private drafts, meeting notes, code
+                snippets, checklists, and plain text writing without a signup
+                wall.
               </p>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {features.map((feature) => (
+                <div key={feature} className="flex gap-3 text-sm leading-6">
+                  <CheckCircle2
+                    className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
+                  <span>{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {[
-                {
-                  icon: Shield,
-                  title: "Private by Design",
-                  description: "Notes live in your browser's local storage. No data is ever sent to our servers."
-                },
-                {
-                  icon: Zap,
-                  title: "Instant Auto-Save",
-                  description: "Never lose a thought. Every keystroke is saved automatically to your device."
-                },
-                {
-                  icon: Moon,
-                  title: "Dark Mode Ready",
-                  description: "Easy on the eyes day or night. Switch themes with a single click."
-                },
-                {
-                  icon: Globe,
-                  title: "Works Offline",
-                  description: "No internet? No problem. Access and edit your notes anywhere."
-                },
-                {
-                  icon: Search,
-                  title: "Instant Search",
-                  description: "Find any note in milliseconds with our lightning-fast search engine."
-                },
-                {
-                  icon: Download,
-                  title: "Export Anywhere",
-                  description: "Your data is yours. Export individual notes or your entire collection anytime."
-                }
-              ].map((feature, i) => (
-                <Card key={i} className="p-8 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-border/60 bg-background/50 backdrop-blur-sm group">
-                  <div className="mb-6 p-3 bg-primary/10 w-fit rounded-xl group-hover:bg-primary/20 transition-colors">
-                    <feature.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {feature.description}
+        <section className="border-b border-border bg-muted/25">
+          <div className="container mx-auto max-w-6xl px-4 py-14">
+            <h2 className="text-3xl font-bold tracking-tight">
+              Built for everyday writing.
+            </h2>
+            <div className="mt-8 grid gap-4 md:grid-cols-3">
+              {workflows.map((workflow) => (
+                <Card key={workflow.title} className="rounded-md p-6">
+                  <h3 className="text-xl font-semibold">{workflow.title}</h3>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {workflow.description}
                   </p>
                 </Card>
               ))}
@@ -133,273 +230,131 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* How it works */}
-        <section className="py-24 border-y border-border/40">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-16">Get Started in Seconds</h2>
-            <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto relative">
-              {/* Connecting Line (Desktop) */}
-              <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-border to-transparent -z-10"></div>
-
-              <div className="text-center">
-                <div className="w-24 h-24 bg-background border-4 border-muted rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
-                  <span className="text-4xl font-bold text-muted-foreground/50">1</span>
-                </div>
-                <h3 className="text-xl font-bold mb-2">Open the App</h3>
-                <p className="text-muted-foreground">No sign-up or login required. Just visit the URL.</p>
+        <section className="border-b border-border">
+          <div className="container mx-auto grid max-w-6xl gap-8 px-4 py-14 md:grid-cols-3">
+            <div className="flex gap-3">
+              <Moon className="mt-1 h-5 w-5 text-primary" aria-hidden="true" />
+              <div>
+                <h2 className="font-semibold">Dark mode</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Switch themes when you need softer contrast for longer notes.
+                </p>
               </div>
-              <div className="text-center">
-                <div className="w-24 h-24 bg-background border-4 border-primary/20 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
-                  <span className="text-4xl font-bold text-primary">2</span>
-                </div>
-                <h3 className="text-xl font-bold mb-2">Start Typing</h3>
-                <p className="text-muted-foreground">The editor is ready instantly. Just focus on your ideas.</p>
+            </div>
+            <div className="flex gap-3">
+              <Search className="mt-1 h-5 w-5 text-primary" aria-hidden="true" />
+              <div>
+                <h2 className="font-semibold">Search</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Find saved notes quickly by title or text.
+                </p>
               </div>
-              <div className="text-center">
-                <div className="w-24 h-24 bg-background border-4 border-muted rounded-full flex items-center justify-center mx-auto mb-6 relative z-10 shadow-sm">
-                  <span className="text-4xl font-bold text-muted-foreground/50">3</span>
-                </div>
-                <h3 className="text-xl font-bold mb-2">Auto-Saved</h3>
-                <p className="text-muted-foreground">Close the tab anytime. Your work is safe for next time.</p>
+            </div>
+            <div className="flex gap-3">
+              <Download className="mt-1 h-5 w-5 text-primary" aria-hidden="true" />
+              <div>
+                <h2 className="font-semibold">Import and export</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Keep your notes portable as plain text files.
+                </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* FAQ & Info Grid */}
-        <section className="py-24 bg-background border-t border-border/40">
-          <div className="container mx-auto px-4 max-w-6xl">
-
-            {/* Tutorials / How to Use */}
-            <div className="mb-20">
-              <div className="flex items-center gap-3 mb-8 justify-center">
-                <BookOpen className="h-8 w-8 text-primary" />
-                <h2 className="text-3xl font-bold text-center">How to Use NerdsNote</h2>
-              </div>
-
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card className="p-6 border-border/60 shadow-sm">
-                  <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-primary" /> Getting Started
-                  </h3>
-                  <ul className="space-y-3 text-sm text-muted-foreground">
-                    <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Click "New Note" or just start typing.</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Notes auto-save instantly as you type.</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Use the search bar to find specific texts.</span>
-                    </li>
-                  </ul>
+        <section className="border-b border-border bg-muted/25">
+          <div className="container mx-auto max-w-6xl px-4 py-14">
+            <h2 className="text-3xl font-bold tracking-tight">
+              Online notepad questions.
+            </h2>
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              {faqs.map(({ question, answer }) => (
+                <Card key={question} className="rounded-md p-6">
+                  <h3 className="text-lg font-semibold">{question}</h3>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {answer}
+                  </p>
                 </Card>
-
-                <Card className="p-6 border-border/60 shadow-sm">
-                  <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <Laptop className="h-4 w-4 text-primary" /> Keyboard Shortcuts
-                  </h3>
-                  <ul className="space-y-3 text-sm text-muted-foreground">
-                    <li className="flex justify-between items-center">
-                      <span>Create new note</span>
-                      <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono border border-border">Ctrl + N</kbd>
-                    </li>
-                    <li className="flex justify-between items-center">
-                      <span>Auto-save</span>
-                      <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono border border-border">Automatic</kbd>
-                    </li>
-                    <li className="flex justify-between items-center">
-                      <span>Focus Search</span>
-                      <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono border border-border">Ctrl + F</kbd>
-                    </li>
-                  </ul>
-                </Card>
-
-                <Card className="p-6 border-border/60 shadow-sm">
-                  <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    <Maximize2 className="h-4 w-4 text-primary" /> Pro Features
-                  </h3>
-                  <ul className="space-y-3 text-sm text-muted-foreground">
-                    <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Distraction-Free: Use maximize button.</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Theme: Toggle Dark/Light mode.</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="text-primary font-bold">•</span>
-                      <span>Font Size: Adjust with A+ / A-.</span>
-                    </li>
-                  </ul>
-                </Card>
-              </div>
-            </div>
-
-            {/* Main Content Grid: FAQ + About */}
-            <div className="grid lg:grid-cols-3 gap-12 mb-20">
-
-              {/* FAQ Section (Span 2) */}
-              <div className="lg:col-span-2">
-                <h3 className="text-2xl font-bold mb-8 flex items-center gap-2">
-                  <Info className="h-6 w-6 text-primary" />
-                  Frequently Asked Questions
-                </h3>
-                <div className="grid md:grid-cols-2 gap-x-8 gap-y-8">
-                  {[
-                    { q: "Is NerdsNote free?", a: "Yes. NerdsNote is completely free to use and does not require an account." },
-                    { q: "Where are my notes stored?", a: "All notes are stored locally in your browser using localStorage. Clearing browser data will remove them, so export important notes regularly." },
-                    { q: "Do I need an internet connection?", a: "No. After the first load, NerdsNote works offline in most modern browsers." },
-                    { q: "How do I export a note?", a: "Click the Download button to save the active note as a .txt file." },
-                    { q: "How do I import a .txt file?", a: "Use the Upload button and choose a .txt file. It will create a new note using the file name." },
-                    { q: "Does NerdsNote support Markdown?", a: "NerdsNote is plain text. You can write Markdown syntax and export as .txt for use elsewhere." },
-                    { q: "Can I change the font size or theme?", a: "Yes. Use A+ / A- to adjust text size and the Sun/Moon toggle to switch themes." },
-                    { q: "Is there cloud sync?", a: "Not yet. All notes are stored locally on your device. Export notes to create backups." },
-                    { q: "Which browsers are supported?", a: "NerdsNote supports recent versions of Chrome, Edge, Firefox, and Safari." },
-                    { q: "Who built NerdsNote?", a: "NerdsNote is built by Khueon Studios. Visit khueonstudios.com to learn more." },
-                  ].map((item, i) => (
-                    <div key={i} className="space-y-2">
-                      <h4 className="font-semibold text-foreground">{item.q}</h4>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{item.a}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Sidebar: About & SEO (Span 1) */}
-              <div className="space-y-8">
-                {/* About Card */}
-                <Card className="p-6 border-border/60 bg-primary/5">
-                  <h3 className="text-lg font-bold mb-3">About NerdsNote</h3>
-                  <div className="space-y-3 text-sm text-muted-foreground">
-                    <p>
-                      NerdsNote is a fast, privacy‑first online notepad built for developers, writers, and anyone who needs a distraction‑free place to jot ideas. It runs in the browser, requires no account, and saves notes locally so your writing remains on your device.
-                    </p>
-                    <p>
-                      Designed for speed and clarity, NerdsNote supports dark mode, offline use, keyboard shortcuts, quick search, import/export, and adjustable font size.
-                    </p>
-                    <div className="flex flex-col gap-2 pt-2">
-                      <Button variant="outline" size="sm" asChild className="w-full justify-start">
-                        <a href={`https://twitter.com/intent/tweet?text=Check out NerdsNote - a free online notepad!&url=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
-                          Share on Twitter
-                        </a>
-                      </Button>
-                      <Button variant="outline" size="sm" asChild className="w-full justify-start">
-                        <a href={`https://www.facebook.com/sharer/sharer.php?u=https://nerdsnote.com`} target="_blank" rel="noopener noreferrer">
-                          Share on Facebook
-                        </a>
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-
-                {/* SEO Card */}
-                <Card className="p-6 border-border/60">
-                  <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                    <Search className="h-4 w-4" /> SEO Overview
-                  </h3>
-                  <div className="space-y-3 text-sm text-muted-foreground">
-                    <p>
-                      NerdsNote is a free online notepad and minimal note‑taking app. Write instantly in your browser with auto‑save, no sign‑up, and no ads.
-                    </p>
-                    <p className="text-xs uppercase tracking-wide font-semibold text-foreground/50 pt-2">Keywords</p>
-                    <p className="text-xs">
-                      free online notepad, distraction‑free writing app, browser‑based notes, local notes, privacy‑friendly notepad, simple notepad for developers.
-                    </p>
-                  </div>
-                </Card>
-              </div>
-            </div>
-
-            {/* Legal Section */}
-            <div className="grid md:grid-cols-2 gap-8 border-t border-border/40 pt-16">
-
-              {/* Privacy Policy */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Shield className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Privacy Policy</h3>
-                </div>
-                <div className="space-y-4 text-sm text-muted-foreground bg-muted/20 p-6 rounded-xl border border-border/50">
-                  <p>
-                    Data Storage: All your notes are stored locally in your browser's localStorage. We don't collect, store, or transmit any of your data to our servers unless you explicitly use the Share Links feature.
-                  </p>
-                  <p>
-                    Share Links: When you create a shareable link, your note content is uploaded to our secure servers and stored for 24 hours, after which it is automatically deleted. Anyone with the link can view the note during this period.
-                  </p>
-                  <p>
-                    No Tracking: We don't use cookies, analytics, or any tracking mechanisms. We don't track who views shared notes. Your privacy is completely protected.
-                  </p>
-                  <p>
-                    Local Only (Default): By default, your notes remain on your device and are never sent to external servers. You have complete control over your data.
-                  </p>
-                </div>
-              </div>
-
-              {/* Terms and Conditions */}
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Terms and Conditions</h3>
-                </div>
-                <div className="space-y-4 text-sm text-muted-foreground bg-muted/20 p-6 rounded-xl border border-border/50">
-                  <p>
-                    Use at Your Own Risk: This application is provided "as is" without any warranties. Use it at your own discretion.
-                  </p>
-                  <p>
-                    Share Links: By using the Share Links feature, you consent to temporarily upload your note content to our servers. Links expire after 24 hours. Do not share sensitive or confidential information.
-                  </p>
-                  <p>
-                    Data Responsibility: You are responsible for backing up your notes. We recommend exporting important notes regularly.
-                  </p>
-                  <p>
-                    No Guarantees: We don't guarantee data persistence. Browser updates, clearing data, or technical issues may result in data loss. Shared links may expire or become unavailable.
-                  </p>
-                  <p>
-                    Free Service: This is a free application. No payment or registration required.
-                  </p>
-                </div>
-              </div>
-
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Built By Section (Sub-footer) */}
-        <section className="py-12 border-t border-border/40 bg-muted/5">
-          <div className="container mx-auto px-4 text-center">
-            <h3 className="text-lg font-semibold mb-4">Built by Khueon Studios</h3>
-            <div className="max-w-2xl mx-auto text-muted-foreground space-y-4">
-              <p>
-                This project is crafted and maintained by Khueon Studios. We create clean, performant, and user‑friendly tools for the web.
+        <section className="border-b border-border">
+          <div className="container mx-auto grid max-w-6xl gap-8 px-4 py-14 md:grid-cols-[0.8fr_1.2fr]">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight">
+                Privacy and data control.
+              </h2>
+              <p className="mt-4 leading-7 text-muted-foreground">
+                NerdsNote is local-first by default. Your regular notes stay in
+                your browser unless you choose to create a share link.
               </p>
-              <div className="flex justify-center">
-                <a href="https://www.khueonstudios.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-                  Visit khueonstudios.com <ExternalLink className="h-4 w-4" />
-                </a>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button variant="outline" asChild>
+                  <Link href="/privacy">Privacy policy</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/terms">Terms</Link>
+                </Button>
               </div>
             </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="rounded-md p-6">
+                <Shield className="h-6 w-6 text-primary" aria-hidden="true" />
+                <h3 className="text-xl font-semibold">Local by default</h3>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Notes are stored in your browser's local storage unless you
+                  explicitly use the Share Links feature.
+                </p>
+              </Card>
+              <Card className="rounded-md p-6">
+                <HardDrive className="h-6 w-6 text-primary" aria-hidden="true" />
+                <h3 className="text-xl font-semibold">Backups are yours</h3>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Export important notes regularly, especially before clearing
+                  browser data or switching devices.
+                </p>
+              </Card>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="container mx-auto flex max-w-6xl flex-col gap-6 px-4 py-14 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <HardDrive className="h-5 w-5 text-primary" aria-hidden="true" />
+                <span>Local-first notes for the browser</span>
+              </div>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight">
+                Start writing now.
+              </h2>
+            </div>
+            <Button size="lg" asChild>
+              <Link href="/notepad">
+                Open NerdsNote
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-border bg-background py-12">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <FileText className="h-5 w-5 text-primary opacity-50" />
-            <span className="font-semibold text-foreground">NerdsNote</span>
-          </div>
-          <p className="mb-4">© {new Date().getFullYear()} NerdsNote. All rights reserved.</p>
-          <p>
-            A project by{" "}
-            <a href="https://www.khueonstudios.com" target="_blank" rel="noopener noreferrer" className="underline decoration-muted-foreground/30 hover:decoration-primary underline-offset-4 transition-all">
-              Khueon Studios
-            </a>
-          </p>
+      <footer className="border-t border-border">
+        <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+          <p>NerdsNote - free, private online notepad.</p>
+          <nav aria-label="Footer navigation" className="flex gap-4">
+            <Link href="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link href="/features" className="hover:text-foreground">
+              Features
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

@@ -9,6 +9,11 @@ interface PageProps {
     params: Promise<{ slug: string }>;
 }
 
+const sharedNoteRobots: Metadata["robots"] = {
+    index: false,
+    follow: false,
+};
+
 // Fetch note data
 async function getNote(slug: string): Promise<StoredNote | null> {
     try {
@@ -29,6 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         return {
             title: "Note Not Found — NerdsNote",
             description: "This note doesn't exist or has expired.",
+            robots: sharedNoteRobots,
         };
     }
 
@@ -40,16 +46,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
         title: `${title} — NerdsNote`,
         description,
+        alternates: {
+            canonical: `/s/${slug}`,
+        },
+        robots: sharedNoteRobots,
         openGraph: {
             title: `${title} — NerdsNote`,
             description,
             type: "article",
             siteName: "NerdsNote",
+            url: `https://nerdsnote.com/s/${slug}`,
+            images: ["/apple-icon.png"],
         },
         twitter: {
             card: "summary",
             title: `${title} — NerdsNote`,
             description,
+            images: ["/apple-icon.png"],
         },
     };
 }
