@@ -770,7 +770,26 @@ export default function NotepadClient() {
                 )}
 
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <EditorToolbar editor={editor} fontSize={fontSize} onFontSizeChange={setFontSize} />
+                  <EditorToolbar
+                    editor={editor}
+                    fontSize={fontSize}
+                    onFontSizeChange={setFontSize}
+                    contained={isDistractFree}
+                    endContent={
+                      isDistractFree ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsDistractFree(false)}
+                          className="h-8 gap-2 bg-background/80"
+                        >
+                          <Minimize2 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Exit Full Screen</span>
+                          <span className="sm:hidden">Exit</span>
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                   <div
                     className={cn(
                       "flex-1 overflow-y-auto scrollbar-theme bg-transparent",
@@ -831,22 +850,6 @@ export default function NotepadClient() {
           )}
         </div>
       </div>
-
-
-      {/* Exit Full Screen Button - Only visible in distract free mode */}
-      {
-        isDistractFree && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsDistractFree(false)}
-            className="fixed top-4 right-4 z-50 bg-background/80 backdrop-blur-sm border-border/50 hover:bg-background/90"
-          >
-            <Minimize2 className="h-4 w-4 mr-2" />
-            Exit Full Screen
-          </Button>
-        )
-      }
 
 
       {/* Create Share Link Dialog */}

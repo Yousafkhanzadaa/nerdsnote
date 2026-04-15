@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { type Editor } from "@tiptap/react"
 import {
   Bold,
@@ -23,9 +24,17 @@ interface EditorToolbarProps {
   editor: Editor | null
   fontSize?: number
   onFontSizeChange?: (size: number) => void
+  contained?: boolean
+  endContent?: ReactNode
 }
 
-export function EditorToolbar({ editor, fontSize = 16, onFontSizeChange }: EditorToolbarProps) {
+export function EditorToolbar({
+  editor,
+  fontSize = 16,
+  onFontSizeChange,
+  contained = false,
+  endContent,
+}: EditorToolbarProps) {
   if (!editor) {
     return null
   }
@@ -42,8 +51,8 @@ export function EditorToolbar({ editor, fontSize = 16, onFontSizeChange }: Edito
     }
   }
 
-  return (
-    <div className="border-b border-border bg-muted/40 p-2 flex flex-wrap gap-1 items-center sticky top-0 z-10 backdrop-blur-sm">
+  const toolbarControls = (
+    <>
       <Button
         variant="ghost"
         size="sm"
@@ -210,8 +219,33 @@ export function EditorToolbar({ editor, fontSize = 16, onFontSizeChange }: Edito
           </div>
         </>
       )}
+    </>
+  )
+
+  return (
+    <div className="border-b border-border bg-muted/40 p-2 sticky top-0 z-10 backdrop-blur-sm">
+      {endContent ? (
+        <div
+          className={cn(
+            "scrollbar-theme flex w-full items-center gap-3 overflow-x-auto",
+            contained && "mx-auto max-w-4xl",
+          )}
+        >
+          <div className="flex min-w-max flex-nowrap items-center gap-1">
+            {toolbarControls}
+          </div>
+          <div className="ml-auto flex shrink-0 items-center">{endContent}</div>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "scrollbar-theme flex w-full flex-nowrap items-center gap-1 overflow-x-auto",
+            contained && "mx-auto max-w-4xl",
+          )}
+        >
+          {toolbarControls}
+        </div>
+      )}
     </div>
   )
 }
-
-
