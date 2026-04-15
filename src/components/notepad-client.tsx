@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { TaskItem, TaskList } from "@tiptap/extension-list"
-import Underline from "@tiptap/extension-underline"
 import CharacterCount from "@tiptap/extension-character-count"
 import { EditorToolbar } from "@/components/editor-toolbar"
 
@@ -170,7 +169,6 @@ export default function NotepadClient() {
       StarterKit,
       TaskList,
       TaskItem.configure({ nested: true }),
-      Underline,
       CharacterCount,
     ],
     immediatelyRender: false,
