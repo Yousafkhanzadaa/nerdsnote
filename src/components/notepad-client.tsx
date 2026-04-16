@@ -583,10 +583,24 @@ export default function NotepadClient() {
                 Create Link
               </Button>
               <div className="w-px h-4 bg-border mx-1" />
-              <Button variant="ghost" size="sm" onClick={() => setIsDistractFree(!isDistractFree)}>
-                {isDistractFree ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDistractFree(true)}
+                title="Enter focus mode"
+                aria-label="Enter focus mode"
+                className="gap-2"
+              >
+                <Maximize2 className="h-4 w-4" />
+                <span className="hidden lg:inline">Focus</span>
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setIsDarkMode(!isDarkMode)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
                 {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
             </div>
