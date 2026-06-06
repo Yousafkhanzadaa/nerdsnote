@@ -223,11 +223,11 @@ export function EditorToolbar({
   )
 
   return (
-    <div className="border-b border-border bg-muted/40 p-2 sticky top-0 z-10 backdrop-blur-sm">
+    <div className="sticky top-0 z-10 border-b border-border bg-muted/40 px-2 py-1.5 backdrop-blur-sm sm:py-2">
       {endContent ? (
         <div
           className={cn(
-            "scrollbar-theme flex w-full items-center gap-3 overflow-x-auto",
+            "scrollbar-theme flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain sm:gap-3",
             contained && "mx-auto max-w-4xl",
           )}
         >
@@ -239,7 +239,7 @@ export function EditorToolbar({
       ) : (
         <div
           className={cn(
-            "scrollbar-theme flex w-full flex-nowrap items-center gap-1 overflow-x-auto",
+            "scrollbar-theme flex w-full min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overscroll-x-contain",
             contained && "mx-auto max-w-4xl",
           )}
         >

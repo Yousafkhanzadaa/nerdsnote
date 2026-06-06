@@ -119,6 +119,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 }
 
@@ -168,6 +169,14 @@
 .ProseMirror {
   font-size: inherit !important;
   line-height: 1.5 !important;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.note-rich-content *,
+.ProseMirror * {
+  max-width: 100%;
 }
 
 .note-rich-content,

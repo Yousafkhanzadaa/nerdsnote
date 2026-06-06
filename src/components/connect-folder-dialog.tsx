@@ -13,19 +13,19 @@ export function ConnectFolderDialog({ isOpen, onClose, onConfirm }: ConnectFolde
     if (!isOpen) return null
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="p-0 max-w-md w-full overflow-hidden shadow-lg animate-in fade-in zoom-in-95 duration-200">
-                <div className="p-4 border-b border-border flex justify-between items-center bg-muted/20">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <FolderHeart className="h-5 w-5 text-primary" />
-                        Connect Local Folder
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
+            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-0 shadow-lg animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 p-4">
+                    <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
+                        <FolderHeart className="h-5 w-5 shrink-0 text-primary" />
+                        <span className="truncate">Connect Local Folder</span>
                     </h3>
-                    <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+                    <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 shrink-0 p-0">
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="space-y-5 p-4 sm:space-y-6 sm:p-6">
                     <p className="text-center text-muted-foreground text-sm">
                         Sync your notes directly to your device for 100% ownership and offline access.
                     </p>
@@ -52,7 +52,7 @@ export function ConnectFolderDialog({ isOpen, onClose, onConfirm }: ConnectFolde
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                         <Button variant="outline" onClick={onClose} className="flex-1">
                             Cancel
                         </Button>

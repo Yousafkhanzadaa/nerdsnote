@@ -130,21 +130,21 @@ export function CreateShareLinkDialog({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="p-0 max-w-md w-full overflow-hidden shadow-lg animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
+            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-0 shadow-lg animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="p-4 border-b border-border flex justify-between items-center bg-muted/20">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <Link2 className="h-5 w-5 text-primary" />
-                        {state === "success" ? "Link Created!" : "Create a shareable link?"}
+                <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 p-4">
+                    <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
+                        <Link2 className="h-5 w-5 shrink-0 text-primary" />
+                        <span className="truncate">{state === "success" ? "Link Created!" : "Create a shareable link?"}</span>
                     </h3>
-                    <Button variant="ghost" size="sm" onClick={handleClose} className="h-8 w-8 p-0">
+                    <Button variant="ghost" size="sm" onClick={handleClose} className="h-8 w-8 shrink-0 p-0">
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
 
                 {/* Body */}
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     {/* Consent State */}
                     {state === "consent" && (
                         <div className="space-y-4">
@@ -159,7 +159,7 @@ export function CreateShareLinkDialog({
                             </div>
 
                             {/* Actions */}
-                            <div className="flex gap-3 pt-2">
+                            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                                 <Button variant="outline" onClick={handleClose} className="flex-1">
                                     Cancel
                                 </Button>
@@ -196,12 +196,12 @@ export function CreateShareLinkDialog({
                             </div>
 
                             {/* URL display with copy */}
-                            <div className="flex gap-2">
+                            <div className="flex min-w-0 gap-2">
                                 <input
                                     type="text"
                                     readOnly
                                     value={shareUrl}
-                                    className="flex-1 px-3 py-2 rounded-md border border-input bg-muted/50 text-sm font-mono"
+                                    className="min-w-0 flex-1 rounded-md border border-input bg-muted/50 px-3 py-2 font-mono text-sm"
                                 />
                                 <Button variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
                                     {copied ? (
@@ -213,7 +213,7 @@ export function CreateShareLinkDialog({
                             </div>
 
                             {/* Share options */}
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                                 {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
                                     <Button
                                         variant="outline"
@@ -262,7 +262,7 @@ export function CreateShareLinkDialog({
                                 <span>{error}</span>
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="flex flex-col-reverse gap-3 sm:flex-row">
                                 <Button variant="outline" onClick={handleClose} className="flex-1">
                                     Cancel
                                 </Button>

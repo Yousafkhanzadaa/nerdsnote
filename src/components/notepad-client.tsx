@@ -515,27 +515,28 @@ export default function NotepadClient() {
   return (
     <div
       className={cn(
-        "min-h-screen bg-background text-foreground transition-all duration-300",
+        "min-h-[100dvh] overflow-x-hidden bg-background text-foreground transition-all duration-300",
         isDistractFree && "overflow-hidden",
       )}
     >
       {/* Header */}
       {!isDistractFree && (
-        <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-10 border-b border-border bg-card/50 backdrop-blur-sm">
+          <div className="flex min-h-16 items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
               {/* Mobile hamburger menu button */}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-                className="md:hidden"
+                className="h-9 w-9 shrink-0 p-0 md:hidden"
+                aria-label="Open notes sidebar"
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <div className="flex items-center gap-2">
-                <FileText className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-bold text-primary">NerdsNote</h1>
+              <div className="flex min-w-0 items-center gap-2">
+                <FileText className="h-5 w-5 shrink-0 text-primary sm:h-6 sm:w-6" />
+                <h1 className="truncate text-lg font-bold text-primary sm:text-xl">NerdsNote</h1>
               </div>
               <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -553,7 +554,7 @@ export default function NotepadClient() {
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               {isFileSystemSupported && (
                 <Button
                   variant="outline"
@@ -578,18 +579,25 @@ export default function NotepadClient() {
                   </span>
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={() => setIsCreateLinkDialogOpen(true)} className="text-primary font-medium" disabled={!activeNote}>
-                <Link2 className="h-4 w-4 mr-2" />
-                Create Link
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCreateLinkDialogOpen(true)}
+                className="h-9 px-2 font-medium text-primary sm:px-3"
+                disabled={!activeNote}
+                aria-label="Create share link"
+              >
+                <Link2 className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Create Link</span>
               </Button>
-              <div className="w-px h-4 bg-border mx-1" />
+              <div className="hidden h-4 w-px bg-border sm:block" />
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsDistractFree(true)}
                 title="Enter focus mode"
                 aria-label="Enter focus mode"
-                className="gap-2"
+                className="h-9 w-9 gap-2 p-0 sm:w-auto sm:px-3"
               >
                 <Maximize2 className="h-4 w-4" />
                 <span className="hidden lg:inline">Focus</span>
@@ -600,6 +608,7 @@ export default function NotepadClient() {
                 onClick={() => setIsDarkMode(!isDarkMode)}
                 title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
                 aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                className="h-9 w-9 p-0 sm:w-auto sm:px-3"
               >
                 {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
@@ -609,8 +618,8 @@ export default function NotepadClient() {
       )}
 
       <div className={cn(
-        "flex",
-        isDistractFree ? "h-screen" : "h-[calc(100vh-73px)]"
+        "flex min-w-0",
+        isDistractFree ? "h-[100dvh]" : "h-[calc(100dvh-65px)] sm:h-[calc(100dvh-73px)]"
       )}>
         {/* Mobile Overlay */}
         {!isDistractFree && isMobileSidebarOpen && (
@@ -623,11 +632,11 @@ export default function NotepadClient() {
         {/* Sidebar */}
         {!isDistractFree && (
           <aside className={cn(
-            "w-80 border-r border-border bg-sidebar flex flex-col transition-transform duration-300",
+            "w-[min(20rem,calc(100vw-2rem))] border-r border-border bg-sidebar flex flex-col transition-transform duration-300 md:w-80",
             "md:translate-x-0 md:static md:z-auto md:h-full",
             isMobileSidebarOpen
-              ? "fixed inset-y-0 left-0 z-50 translate-x-0 h-screen"
-              : "fixed inset-y-0 left-0 z-50 -translate-x-full h-screen"
+              ? "fixed inset-y-0 left-0 z-50 h-[100dvh] translate-x-0"
+              : "fixed inset-y-0 left-0 z-50 h-[100dvh] -translate-x-full"
           )}>
             <div className="p-4 border-b border-sidebar-border">
               {/* Mobile close button */}
@@ -778,7 +787,8 @@ export default function NotepadClient() {
                             e.stopPropagation()
                             setNoteToDelete(note.id)
                           }}
-                          className="ml-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                          className="ml-2 h-7 w-7 shrink-0 p-0 opacity-100 hover:bg-destructive hover:text-destructive-foreground sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
+                          aria-label={`Delete ${note.title}`}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -793,17 +803,17 @@ export default function NotepadClient() {
         )}
 
         {/* Main Editor Container */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Main Editor */}
           <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {activeNote ? (
               <>
                 {!isDistractFree && (
-                  <div className="border-b border-border p-4">
+                  <div className="border-b border-border px-3 py-3 sm:p-4">
                     <Input
                       value={activeNote.title}
                       onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
-                      className="text-lg font-medium border-none bg-transparent p-0 focus-visible:ring-0"
+                      className="border-none bg-transparent p-0 text-base font-medium focus-visible:ring-0 sm:text-lg"
                       placeholder="Note title..."
                     />
                   </div>
@@ -832,8 +842,8 @@ export default function NotepadClient() {
                   />
                   <div
                     className={cn(
-                      "flex-1 overflow-y-auto scrollbar-theme bg-transparent",
-                      isDistractFree && "p-8 max-w-3xl mx-auto w-full",
+                      "scrollbar-theme flex-1 overflow-x-hidden overflow-y-auto bg-transparent",
+                      isDistractFree && "mx-auto w-full max-w-3xl p-4 sm:p-8",
                       !isDistractFree && "p-0"
                     )}
                     onClick={() => editor?.chain().focus().run()}
@@ -844,7 +854,7 @@ export default function NotepadClient() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-center">
+              <div className="flex-1 overflow-y-auto px-4 py-8 text-center sm:flex sm:items-center sm:justify-center">
                 <div className="max-w-xl px-4">
                   <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <h2 className="text-xl font-medium text-muted-foreground mb-2">Welcome to NerdsNote: Free Online Notepad for Note Taking</h2>
@@ -877,14 +887,14 @@ export default function NotepadClient() {
 
           {/* Status Bar - Always visible at bottom */}
           {activeNote && editor && (
-            <footer className="border-t border-border bg-muted/30 px-4 py-2 text-xs text-muted-foreground flex justify-between items-center shrink-0">
-              <div className="flex gap-4">
+            <footer className="flex shrink-0 flex-col gap-1 border-t border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
                 <span>Words: {editor.storage.characterCount?.words() || 0}</span>
                 <span>Characters: {editor.storage.characterCount?.characters() || 0}</span>
               </div>
-              <div className="flex gap-4">
-                <span>{connectedDirectoryName ? `Saving to ${connectedDirectoryName}` : folderSyncNotice ? "Saved locally only" : "Auto-saved in browser"}</span>
-                <span>Last modified: {activeNote.lastModified.toLocaleTimeString()}</span>
+              <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 sm:justify-end">
+                <span className="min-w-0 truncate">{connectedDirectoryName ? `Saving to ${connectedDirectoryName}` : folderSyncNotice ? "Saved locally only" : "Auto-saved in browser"}</span>
+                <span className="whitespace-nowrap">Last modified: {activeNote.lastModified.toLocaleTimeString()}</span>
               </div>
             </footer>
           )}
@@ -915,13 +925,13 @@ export default function NotepadClient() {
       {/* Delete Confirmation Dialog */}
       {
         noteToDelete && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <Card className="p-6 max-w-md mx-4">
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
+            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-5 sm:p-6">
               <h3 className="text-lg font-semibold mb-2">Delete Note</h3>
               <p className="text-muted-foreground mb-4">
                 Are you sure you want to delete this note? This action cannot be undone.
               </p>
-              <div className="flex gap-2 justify-end">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setNoteToDelete(null)}
@@ -946,8 +956,8 @@ export default function NotepadClient() {
       {/* Feature Announcement Modal */}
       {
         showAnnouncement && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="p-6 max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
+            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-5 animate-in fade-in zoom-in-95 duration-200 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-primary" />
