@@ -31,11 +31,6 @@ const sections = [
     body:
       "When you create a shareable link, the selected note content is uploaded so anyone with the link can view it. You choose how long the link lasts, up to 30 days, after which it expires automatically.",
   },
-  // {
-  //   title: "AI formatting",
-  //   body:
-  //     "When you choose AI Format, the current note text is sent to OpenAI so it can be formatted. This is an explicit action and regular notes are not sent for AI formatting unless you use that control.",
-  // },
   {
     title: "Analytics",
     body:

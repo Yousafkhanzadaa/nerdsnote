@@ -2,10 +2,9 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import DOMPurify from "dompurify"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, FolderOpen, HardDrive, Loader2 } from "lucide-react"
+import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, FolderOpen, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
@@ -18,8 +17,6 @@ import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
-import { FORMAT_NOTE_ALLOWED_TAGS } from "@/lib/format-note-types"
-import type { FormatNoteError, FormatNoteResponse } from "@/lib/format-note-types"
 import { normalizeNoteContent, notePreviewText, richTextToPlainText } from "@/lib/note-content"
 
 interface Note {
@@ -33,7 +30,6 @@ const DEFAULT_FONT_SIZE = 16
 const MIN_FONT_SIZE = 12
 const MAX_FONT_SIZE = 24
 const FONT_SIZE_STORAGE_KEY = "nerds-note-font-size"
-const AI_FORMAT_CONSENT_STORAGE_KEY = "nerds-note-ai-format-consent"
 
 function parseStoredFontSize(value: string | null) {
   if (!value) {
@@ -61,10 +57,6 @@ export default function NotepadClient() {
   const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
   const [isConnectFolderDialogOpen, setIsConnectFolderDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
-  const [isAiFormatConsentOpen, setIsAiFormatConsentOpen] = useState(false)
-  const [isAiFormatting, setIsAiFormatting] = useState(false)
-  const [aiFormatError, setAiFormatError] = useState<string | null>(null)
-  const [aiFormatMessage, setAiFormatMessage] = useState<string | null>(null)
   const [showAnnouncement, setShowAnnouncement] = useState(false)
   const [folderSyncNotice, setFolderSyncNotice] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
@@ -230,7 +222,6 @@ export default function NotepadClient() {
     },
     onUpdate: ({ editor }) => {
       if (activeNoteId) {
-        setAiFormatMessage(null)
         updateNote(activeNoteId, { content: editor.getHTML() })
       }
     },
@@ -408,92 +399,6 @@ export default function NotepadClient() {
 
   const activeNote = notes.find((note) => note.id === activeNoteId)
 
-  const applyFormattedNoteHtml = (formattedHtml: string) => {
-    if (!activeNote || !editor) {
-      return
-    }
-
-    const cleanHtml = DOMPurify.sanitize(formattedHtml, {
-      ALLOWED_TAGS: [...FORMAT_NOTE_ALLOWED_TAGS],
-      ALLOWED_ATTR: [],
-    })
-
-    editor.commands.setContent(cleanHtml, {
-      emitUpdate: false,
-      parseOptions: {
-        preserveWhitespace: "full",
-      },
-    })
-    updateNote(activeNote.id, { content: cleanHtml })
-  }
-
-  const runAiFormatNote = async () => {
-    if (!activeNote || !editor || isAiFormatting) {
-      return
-    }
-
-    const currentHtml = normalizeNoteContent(editor.getHTML() || activeNote.content).trim()
-    const plainTextContent = richTextToPlainText(currentHtml).trim()
-
-    if (!plainTextContent) {
-      setAiFormatError("Write something first, then AI can format it.")
-      setAiFormatMessage(null)
-      return
-    }
-
-    setIsAiFormatting(true)
-    setAiFormatError(null)
-    setAiFormatMessage(null)
-
-    try {
-      const response = await fetch("/api/format-note", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: currentHtml }),
-      })
-      const data = await response.json() as FormatNoteResponse | FormatNoteError
-
-      if (!response.ok || !data.ok) {
-        const errorData = data as FormatNoteError
-        setAiFormatError(errorData.error || "Unable to format this note right now.")
-        return
-      }
-
-      if (!data.changed) {
-        setAiFormatMessage("This note already looks well formatted.")
-        return
-      }
-
-      applyFormattedNoteHtml(data.formattedHtml)
-      setAiFormatMessage("AI formatted this note.")
-    } catch {
-      setAiFormatError("Network error. Please try formatting again.")
-    } finally {
-      setIsAiFormatting(false)
-    }
-  }
-
-  const handleAiFormatNote = () => {
-    if (typeof window === "undefined") {
-      return
-    }
-
-    if (localStorage.getItem(AI_FORMAT_CONSENT_STORAGE_KEY) !== "true") {
-      setIsAiFormatConsentOpen(true)
-      return
-    }
-
-    void runAiFormatNote()
-  }
-
-  const handleConfirmAiFormatConsent = () => {
-    localStorage.setItem(AI_FORMAT_CONSENT_STORAGE_KEY, "true")
-    setIsAiFormatConsentOpen(false)
-    void runAiFormatNote()
-  }
-
   // Sync editor content when active note changes
   const prevActiveNoteIdRef = useRef<string | null>(null)
   useEffect(() => {
@@ -612,12 +517,6 @@ export default function NotepadClient() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        if (e.shiftKey && e.key.toLowerCase() === "f") {
-          e.preventDefault()
-          handleAiFormatNote()
-          return
-        }
-
         switch (e.key) {
           case "n":
             e.preventDefault()
@@ -641,7 +540,7 @@ export default function NotepadClient() {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [activeNote, editor, isAiFormatting])
+  }, [activeNote, editor])
 
   return (
     <div
@@ -710,25 +609,6 @@ export default function NotepadClient() {
                   </span>
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAiFormatNote}
-                className="h-9 px-2 font-medium text-primary sm:px-3"
-                disabled={!activeNote || !editor || isAiFormatting}
-                title="AI Format (Ctrl+Shift+F)"
-                aria-label="AI Format note"
-              >
-                {isAiFormatting ? (
-                  <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                ) : (
-                  <Sparkles className="h-4 w-4 sm:mr-2" />
-                )}
-                <span className="hidden sm:inline">AI Format</span>
-                <span className="hidden rounded border border-border/70 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground xl:inline">
-                  Ctrl/Cmd+Shift+F
-                </span>
-              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -977,32 +857,16 @@ export default function NotepadClient() {
                     contained={isDistractFree}
                     endContent={
                       isDistractFree ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleAiFormatNote}
-                            disabled={!activeNote || !editor || isAiFormatting}
-                            className="h-8 gap-2 bg-background/80"
-                          >
-                            {isAiFormatting ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-4 w-4" />
-                            )}
-                            <span className="hidden sm:inline">AI Format</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsDistractFree(false)}
-                            className="h-8 gap-2 bg-background/80"
-                          >
-                            <Minimize2 className="h-4 w-4" />
-                            <span className="hidden sm:inline">Exit Full Screen</span>
-                            <span className="sm:hidden">Exit</span>
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsDistractFree(false)}
+                          className="h-8 gap-2 bg-background/80"
+                        >
+                          <Minimize2 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Exit Full Screen</span>
+                          <span className="sm:hidden">Exit</span>
+                        </Button>
                       ) : undefined
                     }
                   />
@@ -1062,11 +926,6 @@ export default function NotepadClient() {
                 {storageError && (
                   <span className="text-destructive">{storageError}</span>
                 )}
-                {aiFormatError && (
-                  <span className="text-destructive">{aiFormatError}</span>
-                )}
-                {aiFormatMessage && <span className="text-primary">{aiFormatMessage}</span>}
-                {isAiFormatting && <span>AI formatting...</span>}
                 <span className="min-w-0 truncate">{connectedDirectoryName ? `Saving to ${connectedDirectoryName}` : folderSyncNotice ? "Saved locally only" : "Auto-saved in browser"}</span>
                 <span className="whitespace-nowrap">Last modified: {activeNote.lastModified.toLocaleTimeString()}</span>
               </div>
@@ -1095,40 +954,6 @@ export default function NotepadClient() {
         onClose={() => setIsConnectFolderDialogOpen(false)}
         onConfirm={handleConnectDirectory}
       />
-
-      {/* AI Format Consent Dialog */}
-      {
-        isAiFormatConsentOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-5 sm:p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold">Format with AI?</h3>
-              </div>
-              <p className="mb-5 text-sm leading-6 text-muted-foreground">
-                This sends the current note text to OpenAI to improve formatting. NerdsNote will preserve your meaning and only change structure like paragraphs, headings, and lists.
-              </p>
-              <p className="mb-5 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                Shortcut: Ctrl/Cmd+Shift+F
-              </p>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAiFormatConsentOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleConfirmAiFormatConsent}>
-                  <Sparkles className="h-4 w-4" />
-                  Format Note
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )
-      }
 
       {/* Delete Confirmation Dialog */}
       {
