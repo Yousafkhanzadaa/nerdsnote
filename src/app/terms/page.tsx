@@ -37,6 +37,11 @@ const terms = [
       "When you create a share link, anyone with the URL can view that note until the link expires. Do not share sensitive, confidential, or regulated information through public links.",
   },
   {
+    title: "AI formatting",
+    body:
+      "If you use AI Format, your current note text is sent to an AI provider for formatting. Review AI-formatted notes before relying on them, and avoid sending sensitive or regulated information through this feature.",
+  },
+  {
     title: "Local storage",
     body:
       "Local browser storage can be cleared by browser settings, device cleanup tools, private browsing mode, or profile changes. NerdsNote cannot recover notes removed from local storage.",

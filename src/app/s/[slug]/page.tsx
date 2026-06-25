@@ -77,7 +77,7 @@ export default async function SharedNotePage({ params }: PageProps) {
 
     // Pass raw HTML content - client component will sanitize it
     const host = process.env.NEXT_PUBLIC_APP_URL || "https://nerdsnote.com";
-    const openInAppUrl = `${host}/?openShared=${slug}`;
+    const openInAppUrl = `${host}/notepad?openShared=${slug}`;
 
     return (
         <SharedNoteView

@@ -30,20 +30,16 @@ function getClientIP(request: NextRequest): string {
 // Check rate limit for IP
 async function checkRateLimit(ip: string): Promise<boolean> {
     const key = `rate:share:${ip}`;
-    const current = await kv.get<number>(key);
 
-    if (current !== null && current >= RATE_LIMIT_MAX) {
-        return false; // Rate limited
+    // Atomic increment so concurrent requests can't slip past the cap.
+    const current = await kv.incr(key);
+
+    // Start the fixed window on the first request in it.
+    if (current === 1) {
+        await kv.expire(key, RATE_LIMIT_WINDOW);
     }
 
-    // Increment counter
-    if (current === null) {
-        await kv.set(key, 1, { ex: RATE_LIMIT_WINDOW });
-    } else {
-        await kv.incr(key);
-    }
-
-    return true;
+    return current <= RATE_LIMIT_MAX;
 }
 
 // Generate unique slug with retry on collision

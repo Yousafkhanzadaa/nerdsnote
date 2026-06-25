@@ -27,6 +27,8 @@ type DialogState = "consent" | "loading" | "success" | "error";
 
 const EXPIRY_OPTIONS: { value: ExpiryOption; label: string }[] = [
     { value: "1d", label: "1 day" },
+    { value: "7d", label: "7 days" },
+    { value: "30d", label: "30 days" },
 ];
 
 export function CreateShareLinkDialog({
@@ -35,7 +37,9 @@ export function CreateShareLinkDialog({
     noteContent,
 }: CreateShareLinkDialogProps) {
     const [state, setState] = useState<DialogState>("consent");
-    const [expiresIn] = useState<ExpiryOption>("1d");
+    const [expiresIn, setExpiresIn] = useState<ExpiryOption>("7d");
+    const selectedExpiryLabel =
+        EXPIRY_OPTIONS.find((option) => option.value === expiresIn)?.label ?? "7 days";
     const [shareUrl, setShareUrl] = useState("");
     const [expiresAt, setExpiresAt] = useState<string | null>(null);
     const [error, setError] = useState("");
@@ -149,13 +153,28 @@ export function CreateShareLinkDialog({
                     {state === "consent" && (
                         <div className="space-y-4">
                             <p className="text-muted-foreground text-sm leading-relaxed">
-                                This will upload your note to NerdsNote so anyone with the link can view it. Links expire after 24 hours. We won't track readers. Continue?
+                                This will upload your note to NerdsNote so anyone with the link can view it. The link expires after {selectedExpiryLabel}. We won't track readers. Continue?
                             </p>
 
-                            {/* Expiry info */}
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-md">
-                                <Clock className="h-4 w-4" />
-                                <span>Link expires in 24 hours</span>
+                            {/* Expiry selector */}
+                            <div className="space-y-2">
+                                <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                    <Clock className="h-4 w-4" />
+                                    Link expires after
+                                </p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {EXPIRY_OPTIONS.map((option) => (
+                                        <Button
+                                            key={option.value}
+                                            type="button"
+                                            variant={expiresIn === option.value ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => setExpiresIn(option.value)}
+                                        >
+                                            {option.label}
+                                        </Button>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Actions */}

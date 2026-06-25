@@ -17,6 +17,11 @@ export class FileSystemStorage {
     // Track currently managed filenames to help with sync
     private managedFiles: Set<string> = new Set();
 
+    // Authoritative mapping of note id -> on-disk filename. This lets us rename
+    // and delete the correct file even when two notes share a title, instead of
+    // resolving the filename from the (non-unique) title every time.
+    private fileNames: Map<string, string> = new Map();
+
     /**
      * Checks if the File System Access API is supported in this browser.
      */
@@ -68,6 +73,7 @@ export class FileSystemStorage {
     async disconnectDirectory(): Promise<void> {
         this.directoryHandle = null;
         this.managedFiles.clear();
+        this.fileNames.clear();
         await del(DIRECTORY_HANDLE_KEY);
     }
 
@@ -112,7 +118,7 @@ export class FileSystemStorage {
     }
 
     /**
-     * Sanitize title to be a valid filename.
+     * Sanitize a title into a valid base filename (without disambiguation).
      */
     private getFilename(title: string): string {
         // Replace invalid characters with - and trim
@@ -123,12 +129,85 @@ export class FileSystemStorage {
     }
 
     /**
-     * Saves a note to the file system.
+     * Resolves the filename to write this note to, avoiding collisions with a
+     * *different* note's file. A note keeps writing to the filename it already
+     * owns; new collisions get a numeric suffix (e.g. "Notes (2).txt") so we
+     * never overwrite another note's content.
+     */
+    private async resolveFilename(note: Note): Promise<string> {
+        const desired = this.getFilename(note.title);
+
+        // Already own this exact name (no rename) — reuse it.
+        if (this.fileNames.get(note.id) === desired) {
+            return desired;
+        }
+
+        const dotIndex = desired.lastIndexOf('.');
+        const stem = desired.slice(0, dotIndex);
+        const ext = desired.slice(dotIndex);
+
+        let candidate = desired;
+        let counter = 2;
+        while (
+            this.isFilenameOwnedByOther(candidate, note.id) ||
+            (await this.fileExistsUnowned(candidate, note.id))
+        ) {
+            candidate = `${stem} (${counter})${ext}`;
+            counter++;
+        }
+        return candidate;
+    }
+
+    /** True if a different note already maps to this filename. */
+    private isFilenameOwnedByOther(filename: string, ownId: string): boolean {
+        for (const [id, name] of this.fileNames) {
+            if (id !== ownId && name === filename) return true;
+        }
+        return false;
+    }
+
+    /** True if the file exists on disk but isn't owned by this note. */
+    private async fileExistsUnowned(filename: string, ownId: string): Promise<boolean> {
+        if (!this.directoryHandle) return false;
+        if (this.fileNames.get(ownId) === filename) return false;
+
+        try {
+            await this.directoryHandle.getFileHandle(filename, { create: false });
+            return true;
+        } catch (error) {
+            if ((error as DOMException).name === 'NotFoundError') return false;
+            throw error;
+        }
+    }
+
+    /** Removes a file from disk and forgets any note that mapped to it. */
+    private async removeFile(filename: string): Promise<void> {
+        if (!this.directoryHandle) return;
+
+        try {
+            await this.directoryHandle.removeEntry(filename);
+        } catch (error) {
+            // If file doesn't exist, ignore
+            if ((error as DOMException).name !== 'NotFoundError') {
+                throw error;
+            }
+        }
+
+        this.managedFiles.delete(filename);
+        for (const [id, name] of this.fileNames) {
+            if (name === filename) this.fileNames.delete(id);
+        }
+    }
+
+    /**
+     * Saves a note to the file system. Handles renames (removing the stale file)
+     * and same-title collisions internally via the id -> filename map.
      */
     async saveNote(note: Note): Promise<void> {
         if (!this.directoryHandle) throw new Error('No directory connected');
 
-        const filename = this.getFilename(note.title);
+        const filename = await this.resolveFilename(note);
+        const previous = this.fileNames.get(note.id);
         const content = normalizeNoteContent(note.content);
 
         try {
@@ -138,6 +217,12 @@ export class FileSystemStorage {
             await writable.write(content);
             await writable.close();
 
+            // A rename moved this note to a new filename — drop the old file.
+            if (previous && previous !== filename) {
+                await this.removeFile(previous);
+            }
+
+            this.fileNames.set(note.id, filename);
             this.managedFiles.add(filename);
         } catch (error) {
             console.error(`Failed to save note ${note.id}:`, error);
@@ -146,22 +231,20 @@ export class FileSystemStorage {
     }
 
     /**
-     * Deletes a note from the file system by its TITLE.
-     * This is used when renaming (delete old title) or deleting.
+     * Deletes the file backing a note, identified by its id. Renames are handled
+     * by saveNote, so callers only need this for actual deletions.
      */
-    async deleteNoteByTitle(title: string): Promise<void> {
+    async deleteNote(noteId: string): Promise<void> {
         if (!this.directoryHandle) return;
 
-        const filename = this.getFilename(title);
+        const filename = this.fileNames.get(noteId);
+        if (!filename) return;
+
         try {
-            await this.directoryHandle.removeEntry(filename);
-            this.managedFiles.delete(filename);
+            await this.removeFile(filename);
         } catch (error) {
-            // If file doesn't exist, ignore
-            if ((error as DOMException).name !== 'NotFoundError') {
-                console.error(`Failed to delete note with title ${title}:`, error);
-                throw error;
-            }
+            console.error(`Failed to delete note ${noteId}:`, error);
+            throw error;
         }
     }
 
@@ -174,6 +257,7 @@ export class FileSystemStorage {
         try {
             const notes: Note[] = [];
             this.managedFiles.clear();
+            this.fileNames.clear();
 
             // @ts-ignore - values() iterator support varies in TS types
             for await (const entry of this.directoryHandle.values()) {
@@ -187,6 +271,7 @@ export class FileSystemStorage {
                         const title = entry.name.replace(/\.(txt|md)$/, '');
 
                         this.managedFiles.add(entry.name);
+                        this.fileNames.set(title, entry.name);
 
                         notes.push({
                             id: title, // Use title as ID for file-based notes

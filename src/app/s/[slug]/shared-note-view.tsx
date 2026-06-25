@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
-import { FileText, Clock, Calendar, ArrowUpRight } from "lucide-react";
+import { FileText, Clock, Calendar, ArrowUpRight, WifiOff, Shield, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Link from 'next/link';
@@ -57,7 +57,7 @@ export default function SharedNoteView({
                     </a>
                     <Button onClick={() => window.open(openInAppUrl, '_blank')} variant="outline" size="sm">
                         <ArrowUpRight className="h-4 w-4 mr-2" />
-                        Open in App
+                        Save to my notes
                     </Button>
                 </div>
             </header>
@@ -101,11 +101,49 @@ export default function SharedNoteView({
                 </Card>
             </main>
 
-            {/* Footer CTA */}
-            <footer className="py-6 text-center text-sm text-muted-foreground bg-muted/20 border-t border-border mt-auto">
-                <p>NerdsNote — Free, privacy-first notepad</p>
-                <Link href="/" className="text-primary hover:underline mt-2 inline-block">
-                    Create your own note
+            {/* Conversion CTA */}
+            <section className="border-t border-border bg-muted/20">
+                <div className="mx-auto max-w-4xl px-4 py-12 text-center">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <FileText className="h-6 w-6 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight">
+                        Get your own free notepad
+                    </h2>
+                    <p className="mx-auto mt-2 max-w-md text-muted-foreground">
+                        NerdsNote is a free online notepad with no login. Your notes stay on
+                        your device, work offline, and auto-save as you type.
+                    </p>
+                    <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                        <Button asChild size="lg">
+                            <Link href="/notepad">
+                                Start writing — it&apos;s free
+                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                            </Link>
+                        </Button>
+                        <Button asChild variant="outline" size="lg">
+                            <Link href="/features">See all features</Link>
+                        </Button>
+                    </div>
+                    <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                            <Shield className="h-4 w-4 text-primary" /> Private by default
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <WifiOff className="h-4 w-4 text-primary" /> Works offline
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <Zap className="h-4 w-4 text-primary" /> No account needed
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            {/* Footer badge */}
+            <footer className="border-t border-border bg-background py-5 text-center text-sm text-muted-foreground">
+                <Link href="/" className="inline-flex items-center gap-1.5 hover:text-foreground">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Made with <span className="font-semibold text-primary">NerdsNote</span>
                 </Link>
             </footer>
         </div>
