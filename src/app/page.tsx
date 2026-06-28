@@ -32,7 +32,23 @@ export const metadata: Metadata = {
     description:
       "A private browser notepad with local auto-save, offline access, search, dark mode, import, and export. No login required.",
     url: "https://nerdsnote.com",
+    siteName: "NerdsNote",
     type: "website",
+    images: [
+      {
+        url: "/apple-icon.png",
+        width: 512,
+        height: 512,
+        alt: "NerdsNote",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NerdsNote - Free Online Notepad",
+    description:
+      "A private browser notepad with local auto-save, offline access, search, dark mode, import, and export. No login required.",
+    images: ["/apple-icon.png"],
   },
 }
 
@@ -96,6 +112,20 @@ const faqs = [
   },
 ]
 
+// FAQPage structured data so the homepage FAQ is eligible for rich results.
+const faqStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map(({ question, answer }) => ({
+    "@type": "Question",
+    name: question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: answer,
+    },
+  })),
+}
+
 // A stylized, in-browser preview of the editor — the hero's focal visual.
 function EditorPreview() {
   return (
@@ -108,9 +138,9 @@ function EditorPreview() {
         {/* Window chrome */}
         <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
           <div className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-destructive/70" />
-            <span className="h-3 w-3 rounded-full bg-amber-400/80" />
-            <span className="h-3 w-3 rounded-full bg-emerald-400/80" />
+            <span className="h-3 w-3 rounded-full bg-foreground/25" />
+            <span className="h-3 w-3 rounded-full bg-foreground/15" />
+            <span className="h-3 w-3 rounded-full bg-foreground/10" />
           </div>
           <div className="ml-3 flex items-center gap-2 truncate text-xs font-medium text-muted-foreground">
             <FileText className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
@@ -219,6 +249,12 @@ function FeatureCard({
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqStructuredData).replace(/</g, "\\u003c"),
+        }}
+      />
       <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
