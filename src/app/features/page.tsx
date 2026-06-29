@@ -15,6 +15,8 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { JsonLd } from "@/components/json-ld"
+import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "Features — NerdsNote | Distraction-Free Online Notepad",
@@ -28,6 +30,7 @@ export const metadata: Metadata = {
     description:
       "Private online notepad features: local auto-save, dark mode, file export, private storage, offline access, and more.",
     url: "https://nerdsnote.com/features",
+    images: [ogImage],
   },
 }
 
@@ -97,6 +100,12 @@ const features = [
 export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Features", path: "/features" },
+        ])}
+      />
       <header className="border-b border-border">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">

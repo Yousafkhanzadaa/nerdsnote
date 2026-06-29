@@ -4,6 +4,8 @@ import { FileText, Mail } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { JsonLd } from "@/components/json-ld"
+import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
 const contactEmail = "khueonstudios@gmail.com"
 
@@ -19,12 +21,19 @@ export const metadata: Metadata = {
     description:
       "Contact NerdsNote by email for support, feedback, questions, or product inquiries.",
     url: "https://nerdsnote.com/contact",
+    images: [ogImage],
   },
 }
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Contact", path: "/contact" },
+        ])}
+      />
       <header className="border-b border-border">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">

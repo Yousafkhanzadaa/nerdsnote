@@ -4,6 +4,8 @@ import { FileText, Scale } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { JsonLd } from "@/components/json-ld"
+import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "Terms and Conditions - NerdsNote",
@@ -17,6 +19,7 @@ export const metadata: Metadata = {
     description:
       "Terms for using NerdsNote as a local-first online notepad and share-link tool.",
     url: "https://nerdsnote.com/terms",
+    images: [ogImage],
   },
 }
 
@@ -51,6 +54,12 @@ const terms = [
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Terms and Conditions", path: "/terms" },
+        ])}
+      />
       <header className="border-b border-border">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">

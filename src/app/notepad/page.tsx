@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import NotepadClient from "@/components/notepad-client"
+import { JsonLd } from "@/components/json-ld"
+import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "NerdsNote Editor — Free Online Notepad",
@@ -13,9 +15,20 @@ export const metadata: Metadata = {
     description:
       "Write distraction-free with NerdsNote. Auto-save, dark mode, and local privacy.",
     url: "https://nerdsnote.com/notepad",
+    images: [ogImage],
   },
 }
 
 export default function NotepadPage() {
-  return <NotepadClient />
+  return (
+    <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Editor", path: "/notepad" },
+        ])}
+      />
+      <NotepadClient />
+    </>
+  )
 }

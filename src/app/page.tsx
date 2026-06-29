@@ -27,29 +27,6 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
-  openGraph: {
-    title: "NerdsNote - Free Online Notepad",
-    description:
-      "A private browser notepad with local auto-save, offline access, search, dark mode, import, and export. No login required.",
-    url: "https://nerdsnote.com",
-    siteName: "NerdsNote",
-    type: "website",
-    images: [
-      {
-        url: "/apple-icon.png",
-        width: 512,
-        height: 512,
-        alt: "NerdsNote",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "NerdsNote - Free Online Notepad",
-    description:
-      "A private browser notepad with local auto-save, offline access, search, dark mode, import, and export. No login required.",
-    images: ["/apple-icon.png"],
-  },
 }
 
 const features = [

@@ -4,6 +4,7 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
+import { ogImage } from "@/lib/structured-data"
 import "./globals.css"
 
 const siteUrl = "https://nerdsnote.com"
@@ -13,6 +14,7 @@ const organization = {
     "name": "Khueon Studios",
     "url": "https://www.khueonstudios.com",
     "email": "khueonstudios@gmail.com",
+    "logo": `${siteUrl}/web-app-manifest-512x512.png`,
 }
 
 const structuredData = [
@@ -88,23 +90,14 @@ export const metadata: Metadata = {
         description:
             "Free, distraction‑free online notepad. No login, no ads. Local auto‑save, dark mode, import/export, and search.",
         siteName: "NerdsNote",
-        images: [
-            {
-                url: "/apple-icon.png",
-                width: 512,
-                height: 512,
-                alt: "NerdsNote",
-            },
-        ],
+        images: [ogImage],
     },
     twitter: {
         card: "summary_large_image",
         title: "NerdsNote — Free Online Notepad",
         description:
             "Free, distraction‑free online notepad. No login, no ads. Local auto‑save, dark mode, import/export, and search.",
-        images: [
-            "/apple-icon.png",
-        ],
+        images: [ogImage.url],
     },
     icons: {
         icon: [
@@ -142,7 +135,10 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-    themeColor: "#ffffff",
+    themeColor: [
+        { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+        { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    ],
 }
 
 export default function RootLayout({

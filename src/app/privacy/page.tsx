@@ -4,6 +4,8 @@ import { FileText, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { JsonLd } from "@/components/json-ld"
+import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "Privacy Policy - NerdsNote",
@@ -17,6 +19,7 @@ export const metadata: Metadata = {
     description:
       "How NerdsNote handles local notes, share links, analytics, and user data.",
     url: "https://nerdsnote.com/privacy",
+    images: [ogImage],
   },
 }
 
@@ -51,6 +54,12 @@ const sections = [
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Privacy Policy", path: "/privacy" },
+        ])}
+      />
       <header className="border-b border-border">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
