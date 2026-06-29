@@ -541,18 +541,11 @@ export default function HomePage() {
 
       <footer className="border-t border-border">
         <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <p className="flex items-center gap-1.5">
-            NerdsNote - free, private online notepad.
-            <Link
-              href="/about"
-              aria-label="About NerdsNote"
-              title="About NerdsNote"
-              className="text-muted-foreground/30 transition-colors hover:text-foreground"
-            >
-              ·
-            </Link>
-          </p>
+          <p>NerdsNote - free, private online notepad.</p>
           <nav aria-label="Footer navigation" className="flex gap-4">
+            <Link href="/about" className="hover:text-foreground">
+              About
+            </Link>
             <Link href="/privacy" className="hover:text-foreground">
               Privacy
             </Link>
