@@ -19,9 +19,9 @@ import { JsonLd } from "@/components/json-ld"
 import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
-  title: "Features — NerdsNote | Distraction-Free Online Notepad",
+  title: "NerdsNote Features — Auto-Save, Dark Mode, Offline & Export",
   description:
-    "Explore NerdsNote features for private note taking: local auto-save, offline support, dark mode, search, import, export, and distraction-free writing.",
+    "Explore NerdsNote's features for private note taking: local auto-save, offline support, dark mode, instant search, file import, export, and distraction-free writing.",
   alternates: {
     canonical: "/features",
   },

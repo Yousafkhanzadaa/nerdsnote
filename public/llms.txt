@@ -1,0 +1,25 @@
+# NerdsNote
+
+> NerdsNote is a free, private, local-first online notepad for distraction-free writing in the browser. Notes are stored locally on the user's own device by default — no account, no server — with optional read-only share links.
+
+Key facts:
+
+- Free to use, with no account or login required.
+- Privacy-first: notes are saved in the browser's local storage by default and are never uploaded unless the user deliberately creates a share link.
+- Works offline once the app has loaded.
+- Plain-text focused: import `.txt` and `.md` files, export portable plain text.
+- Additional features: autosave, dark mode, instant search across notes, full-screen focus mode, and optional local folder sync in supported browsers.
+- Built and maintained by Khueon Studios.
+
+## Core pages
+
+- [Home](https://nerdsnote.com/): Overview of NerdsNote, the free, private online notepad.
+- [Notepad editor](https://nerdsnote.com/notepad): The editor itself — open it to write notes directly in the browser.
+- [Features](https://nerdsnote.com/features): Full feature list (autosave, dark mode, offline, search, import/export, folder sync).
+- [About](https://nerdsnote.com/about): Why NerdsNote exists, how it works, and who it is for.
+
+## Policies
+
+- [Privacy policy](https://nerdsnote.com/privacy): How notes and data are handled.
+- [Terms](https://nerdsnote.com/terms): Terms of use.
+- [Contact](https://nerdsnote.com/contact): How to get in touch.

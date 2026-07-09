@@ -4,9 +4,9 @@ import { JsonLd } from "@/components/json-ld"
 import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
-  title: "NerdsNote Editor — Free Online Notepad",
+  title: "Open the NerdsNote Editor — Write Notes in Your Browser",
   description:
-    "Start writing in your browser immediately. NerdsNote is a free, secure, offline-capable online notepad with no login required.",
+    "Open the editor and start writing instantly. Autosave, dark mode, instant search, and offline access — private, local-first, and no login required.",
   alternates: {
     canonical: "/notepad",
   },
