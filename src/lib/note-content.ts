@@ -1,10 +1,14 @@
-const BLOCK_TAGS = /<\/(p|div|h[1-6]|blockquote|pre|li|ul|ol)>/gi
+const BLOCK_TAGS = /<\/(p|div|h[1-6]|blockquote|pre|li|ul|ol|table|thead|tbody|tfoot|tr)>/gi
 const BREAK_TAGS = /<br\s*\/?>/gi
 const LIST_ITEM_TAG = /<li\b([^>]*)>/gi
+const PARAGRAPH_OPEN_TAG = /<p\b([^>]*)>/gi
+const TABLE_TAG = /<table\b[^>]*>([\s\S]*?)<\/table>/gi
+const TABLE_ROW_TAG = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi
+const TABLE_CELL_TAG = /<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi
 const HTML_TAGS = /<[^>]+>/g
-const RICH_TEXT_TAGS = /(p|div|h[1-6]|blockquote|pre|code|ul|ol|li|strong|b|em|i|u|s|strike|span|a|label|input)/i
-const RICH_TEXT_CLOSING_TAGS = /<\/(p|div|h[1-6]|blockquote|pre|code|ul|ol|li|strong|b|em|i|u|s|strike|span|a|label)>/i
-const RICH_TEXT_SELF_CLOSING_TAGS = /<(br|input)\b[^>]*\/?>/i
+const RICH_TEXT_TAGS = /(p|div|h[1-6]|blockquote|pre|code|ul|ol|li|strong|b|em|i|u|s|strike|span|mark|a|label|input|table|thead|tbody|tfoot|tr|th|td|colgroup|col)/i
+const RICH_TEXT_CLOSING_TAGS = /<\/(p|div|h[1-6]|blockquote|pre|code|ul|ol|li|strong|b|em|i|u|s|strike|span|mark|a|label|table|thead|tbody|tfoot|tr|th|td|colgroup)>/i
+const RICH_TEXT_SELF_CLOSING_TAGS = /<(br|input|col)\b[^>]*\/?>/i
 
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&",
@@ -63,6 +67,25 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#x([0-9a-f]+);/gi, (_, value) => String.fromCharCode(Number.parseInt(value, 16)))
 }
 
+function tableHtmlToPlainText(tableContent: string) {
+  const rows = Array.from(tableContent.matchAll(TABLE_ROW_TAG), (rowMatch) => {
+    const cells = Array.from(rowMatch[1].matchAll(TABLE_CELL_TAG), (cellMatch) =>
+      decodeHtmlEntities(
+        cellMatch[1]
+          .replace(BREAK_TAGS, "\n")
+          .replace(BLOCK_TAGS, "\n")
+          .replace(HTML_TAGS, ""),
+      )
+        .replace(/\n+/g, " ")
+        .trim(),
+    )
+
+    return cells.join("\t")
+  })
+
+  return `\n${rows.join("\n")}\n`
+}
+
 export function richTextToPlainText(content: string): string {
   if (!content) {
     return ""
@@ -72,7 +95,18 @@ export function richTextToPlainText(content: string): string {
     return content.replace(/\r\n?/g, "\n")
   }
 
-  const withListPrefixes = content
+  const withTableText = content.replace(TABLE_TAG, (_, tableContent: string) =>
+    tableHtmlToPlainText(tableContent),
+  )
+
+  const withParagraphIndents = withTableText.replace(PARAGRAPH_OPEN_TAG, (_, attributes: string) => {
+    const indentMatch = /\bdata-indent=(["'])(\d+)\1/i.exec(attributes)
+    const indent = indentMatch ? Math.min(6, Number(indentMatch[2])) : 0
+
+    return "\t".repeat(indent)
+  })
+
+  const withListPrefixes = withParagraphIndents
     .replace(/\r\n?/g, "\n")
     .replace(LIST_ITEM_TAG, (_, attributes: string) => {
       const isTaskItem = /data-type=(["'])taskItem\1/i.test(attributes)

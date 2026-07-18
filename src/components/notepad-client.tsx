@@ -10,6 +10,8 @@ import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { TaskItem, TaskList } from "@tiptap/extension-list"
 import CharacterCount from "@tiptap/extension-character-count"
+import { Highlight } from "@tiptap/extension-highlight"
+import { TableKit } from "@tiptap/extension-table"
 import { EditorToolbar } from "@/components/editor-toolbar"
 
 import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
@@ -18,6 +20,7 @@ import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
 import { normalizeNoteContent, notePreviewText, richTextToPlainText } from "@/lib/note-content"
+import { ParagraphIndent } from "@/lib/tiptap/paragraph-indent"
 
 interface Note {
   id: string
@@ -209,6 +212,16 @@ export default function NotepadClient() {
       StarterKit,
       TaskList,
       TaskItem.configure({ nested: true }),
+      Highlight.configure({ multicolor: true }),
+      TableKit.configure({
+        table: {
+          allowTableNodeSelection: true,
+          cellMinWidth: 120,
+          renderWrapper: true,
+          resizable: true,
+        },
+      }),
+      ParagraphIndent,
       CharacterCount,
     ],
     immediatelyRender: false,
@@ -862,9 +875,11 @@ export default function NotepadClient() {
                           size="sm"
                           onClick={() => setIsDistractFree(false)}
                           className="h-8 gap-2 bg-background/80"
+                          title="Exit focus mode (F11)"
+                          aria-label="Exit focus mode"
                         >
                           <Minimize2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Exit Full Screen</span>
+                          <span className="hidden sm:inline">Exit Focus Mode</span>
                           <span className="sm:hidden">Exit</span>
                         </Button>
                       ) : undefined

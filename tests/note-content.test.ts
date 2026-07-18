@@ -21,6 +21,14 @@ describe("note content utilities", () => {
     expect(normalizeNoteContent(content)).toBe(content)
   })
 
+  it("recognizes highlighted text and tables as rich text", () => {
+    const highlighted = '<mark data-color="#fef08a">Important</mark>'
+    const table = "<table><tbody><tr><td><p>Cell</p></td></tr></tbody></table>"
+
+    expect(normalizeNoteContent(highlighted)).toBe(highlighted)
+    expect(normalizeNoteContent(table)).toBe(table)
+  })
+
   it("treats literal angle-bracket text as plain text instead of html", () => {
     expect(normalizeNoteContent("Use <div> tags carefully")).toBe("<p>Use &lt;div&gt; tags carefully</p>")
   })
@@ -40,6 +48,29 @@ describe("note content utilities", () => {
     ].join("")
 
     expect(richTextToPlainText(content)).toBe("[x] The cat  The dog\n[ ] Math x Chemistry")
+  })
+
+  it("preserves paragraph indentation in plain-text exports", () => {
+    const content = '<p>Summary</p><p data-indent="2">Indented detail</p>'
+
+    expect(richTextToPlainText(content)).toBe("Summary\n\t\tIndented detail")
+  })
+
+  it("exports table cells as tab-separated rows", () => {
+    const content = [
+      "<table><tbody>",
+      "<tr><th><p>Name</p></th><th><p>Status</p></th></tr>",
+      "<tr><td><p>NerdsNote</p></td><td><p>Ready</p></td></tr>",
+      "</tbody></table>",
+    ].join("")
+
+    expect(richTextToPlainText(content)).toBe("Name\tStatus\nNerdsNote\tReady")
+  })
+
+  it("keeps highlighted words in plain-text exports", () => {
+    const content = '<p><mark data-color="#fef08a">Important</mark> text</p>'
+
+    expect(richTextToPlainText(content)).toBe("Important text")
   })
 
   it("builds compact previews from rich text", () => {

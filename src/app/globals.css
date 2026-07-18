@@ -316,3 +316,171 @@
   margin-top: 0.5rem;
   padding-left: 1rem;
 }
+
+/* Paragraph indentation is stored as a small semantic level instead of an
+   inline style, so it survives saving and remains safe in shared notes. */
+.note-rich-content p[data-indent="1"],
+.ProseMirror p[data-indent="1"] {
+  margin-left: 2rem;
+  margin-inline-start: min(2rem, 40%);
+}
+
+.note-rich-content p[data-indent="2"],
+.ProseMirror p[data-indent="2"] {
+  margin-left: 4rem;
+  margin-inline-start: min(4rem, 40%);
+}
+
+.note-rich-content p[data-indent="3"],
+.ProseMirror p[data-indent="3"] {
+  margin-left: 6rem;
+  margin-inline-start: min(6rem, 40%);
+}
+
+.note-rich-content p[data-indent="4"],
+.ProseMirror p[data-indent="4"] {
+  margin-left: 8rem;
+  margin-inline-start: min(8rem, 40%);
+}
+
+.note-rich-content p[data-indent="5"],
+.ProseMirror p[data-indent="5"] {
+  margin-left: 10rem;
+  margin-inline-start: min(10rem, 40%);
+}
+
+.note-rich-content p[data-indent="6"],
+.ProseMirror p[data-indent="6"] {
+  margin-left: 12rem;
+  margin-inline-start: min(12rem, 40%);
+}
+
+/* A dark text color keeps every pastel highlight readable in both themes.
+   Known colors are reapplied from data-color when shared-note sanitization
+   intentionally removes inline styles. */
+.note-rich-content mark,
+.ProseMirror mark {
+  border-radius: 0.2em;
+  background-color: #fef08a !important;
+  box-decoration-break: clone;
+  color: #172033 !important;
+  padding: 0.05em 0.12em;
+  -webkit-box-decoration-break: clone;
+}
+
+.note-rich-content mark[data-color="#bbf7d0"],
+.ProseMirror mark[data-color="#bbf7d0"] {
+  background-color: #bbf7d0 !important;
+}
+
+.note-rich-content mark[data-color="#bfdbfe"],
+.ProseMirror mark[data-color="#bfdbfe"] {
+  background-color: #bfdbfe !important;
+}
+
+.note-rich-content mark[data-color="#fbcfe8"],
+.ProseMirror mark[data-color="#fbcfe8"] {
+  background-color: #fbcfe8 !important;
+}
+
+.note-rich-content mark[data-color="#e9d5ff"],
+.ProseMirror mark[data-color="#e9d5ff"] {
+  background-color: #e9d5ff !important;
+}
+
+/* TipTap tables are horizontally scrollable on narrow screens and preserve
+   usable touch targets without forcing the whole page to overflow. */
+.note-rich-content .tableWrapper,
+.ProseMirror .tableWrapper {
+  margin-block: 1rem;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: var(--muted-foreground) transparent;
+  scrollbar-width: thin;
+}
+
+.note-rich-content table,
+.ProseMirror table {
+  width: 100%;
+  min-width: 30rem;
+  margin: 1rem 0;
+  table-layout: fixed;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--foreground) 30%, var(--border));
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 8%, transparent);
+}
+
+.note-rich-content .tableWrapper table,
+.ProseMirror .tableWrapper table {
+  margin: 0;
+}
+
+.note-rich-content th,
+.note-rich-content td,
+.ProseMirror th,
+.ProseMirror td {
+  position: relative;
+  min-width: 7.5rem;
+  border: 1px solid color-mix(in oklch, var(--foreground) 24%, var(--border));
+  padding: 0.625rem 0.75rem;
+  vertical-align: top;
+}
+
+.note-rich-content th,
+.ProseMirror th {
+  background: color-mix(in oklch, var(--muted) 84%, var(--foreground));
+  color: var(--foreground);
+  font-weight: 650;
+  text-align: start;
+}
+
+.note-rich-content td,
+.ProseMirror td {
+  background: var(--background);
+}
+
+.note-rich-content tbody tr:nth-child(even) td,
+.ProseMirror tbody tr:nth-child(even) td {
+  background: color-mix(in oklch, var(--background) 96%, var(--foreground));
+}
+
+.note-rich-content th > :first-child,
+.note-rich-content td > :first-child,
+.ProseMirror th > :first-child,
+.ProseMirror td > :first-child {
+  margin-top: 0;
+}
+
+.note-rich-content th > :last-child,
+.note-rich-content td > :last-child,
+.ProseMirror th > :last-child,
+.ProseMirror td > :last-child {
+  margin-bottom: 0;
+}
+
+.ProseMirror .selectedCell::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: color-mix(in oklch, var(--primary) 16%, transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 4px;
+  background-color: var(--primary);
+  pointer-events: none;
+}
+
+.resize-cursor {
+  cursor: col-resize;
+}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -14,6 +15,7 @@ import {
     Share2,
     Clock,
     AlertCircle,
+    Download,
 } from "lucide-react";
 import type { ExpiryOption, ShareNoteResponse, ShareNoteError } from "@/lib/share-types";
 
@@ -31,6 +33,8 @@ const EXPIRY_OPTIONS: { value: ExpiryOption; label: string }[] = [
     { value: "30d", label: "30 days" },
 ];
 
+const QR_SHARE_SIZE = 1024;
+
 export function CreateShareLinkDialog({
     isOpen,
     onClose,
@@ -44,6 +48,8 @@ export function CreateShareLinkDialog({
     const [expiresAt, setExpiresAt] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [copied, setCopied] = useState(false);
+    const [shareNotice, setShareNotice] = useState("");
+    const qrCodeRef = useRef<SVGSVGElement>(null);
 
     if (!isOpen) return null;
 
@@ -52,12 +58,14 @@ export function CreateShareLinkDialog({
         setError("");
         setShareUrl("");
         setCopied(false);
+        setShareNotice("");
         onClose();
     };
 
     const handleCreateLink = async () => {
         setState("loading");
         setError("");
+        setShareNotice("");
 
         try {
             const response = await fetch("/api/share", {
@@ -112,16 +120,124 @@ export function CreateShareLinkDialog({
         }
     };
 
+    const getQrSvgMarkup = () => {
+        if (!qrCodeRef.current) return null;
+
+        const qrCode = qrCodeRef.current.cloneNode(true) as SVGSVGElement;
+        qrCode.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        return new XMLSerializer().serializeToString(qrCode);
+    };
+
+    const handleDownloadQrCode = () => {
+        const svgMarkup = getQrSvgMarkup();
+        if (!svgMarkup) return;
+
+        const blob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+        const downloadUrl = URL.createObjectURL(blob);
+        const downloadLink = document.createElement("a");
+
+        downloadLink.href = downloadUrl;
+        downloadLink.download = "nerdsnote-share-qr.svg";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        downloadLink.remove();
+        URL.revokeObjectURL(downloadUrl);
+    };
+
+    const createQrPngFile = async () => {
+        const svgMarkup = getQrSvgMarkup();
+        if (!svgMarkup) {
+            throw new Error("QR code is not ready");
+        }
+
+        const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        try {
+            const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+                const qrImage = new Image();
+                qrImage.onload = () => resolve(qrImage);
+                qrImage.onerror = () => reject(new Error("Unable to prepare QR image"));
+                qrImage.src = svgUrl;
+            });
+            const canvas = document.createElement("canvas");
+            canvas.width = QR_SHARE_SIZE;
+            canvas.height = QR_SHARE_SIZE;
+
+            const context = canvas.getContext("2d");
+
+            if (!context) {
+                throw new Error("Canvas is unavailable");
+            }
+
+            context.fillStyle = "#ffffff";
+            context.fillRect(0, 0, QR_SHARE_SIZE, QR_SHARE_SIZE);
+            context.drawImage(image, 0, 0, QR_SHARE_SIZE, QR_SHARE_SIZE);
+
+            const pngBlob = await new Promise<Blob>((resolve, reject) => {
+                canvas.toBlob((result) => {
+                    if (result) {
+                        resolve(result);
+                    } else {
+                        reject(new Error("Unable to create QR image"));
+                    }
+                }, "image/png");
+            });
+
+            return new File([pngBlob], "nerdsnote-share-qr.png", { type: "image/png" });
+        } finally {
+            URL.revokeObjectURL(svgUrl);
+        }
+    };
+
     const handleNativeShare = async () => {
-        if (navigator.share) {
+        if (!navigator.share) return;
+
+        setShareNotice("");
+
+        try {
+            let qrFile: File | null = null;
+
             try {
+                qrFile = await createQrPngFile();
+            } catch {
+                // The link can still be shared if this browser cannot create a PNG.
+            }
+
+            let canShareQrFile = false;
+            if (qrFile && typeof navigator.canShare === "function") {
+                try {
+                    canShareQrFile = navigator.canShare({ files: [qrFile] });
+                } catch {
+                    canShareQrFile = false;
+                }
+            }
+
+            if (qrFile && canShareQrFile) {
                 await navigator.share({
                     title: "Shared Note from NerdsNote",
-                    url: shareUrl,
+                    text: `Open this shared note: ${shareUrl}`,
+                    files: [qrFile],
                 });
-            } catch {
-                // User cancelled or share failed
+                return;
             }
+
+            handleDownloadQrCode();
+            await navigator.share({
+                title: "Shared Note from NerdsNote",
+                text: "Open this shared note from NerdsNote.",
+                url: shareUrl,
+            });
+            setShareNotice(
+                "Your browser downloaded the QR image separately because it cannot attach files to the share sheet.",
+            );
+        } catch (shareError) {
+            if (shareError instanceof DOMException && shareError.name === "AbortError") {
+                return;
+            }
+            setShareNotice(
+                "Sharing could not be opened. Copy the link and download the QR code instead.",
+            );
         }
     };
 
@@ -231,17 +347,50 @@ export function CreateShareLinkDialog({
                                 </Button>
                             </div>
 
+                            {/* QR code is rendered locally so the share URL is not sent to a third party. */}
+                            <div className="rounded-lg border border-border bg-muted/30 p-4">
+                                <div className="grid items-center gap-4 sm:grid-cols-[auto_1fr]">
+                                    <div className="mx-auto rounded-lg bg-white p-2 shadow-sm">
+                                        <QRCodeSVG
+                                            ref={qrCodeRef}
+                                            value={shareUrl}
+                                            size={168}
+                                            level="M"
+                                            marginSize={4}
+                                            bgColor="#ffffff"
+                                            fgColor="#111827"
+                                            title="QR code for shared note"
+                                            aria-label="QR code for shared note"
+                                        />
+                                    </div>
+                                    <div className="text-center sm:text-left">
+                                        <p className="text-sm font-semibold">Scan to open the shared note</p>
+                                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                                            Point a phone camera at this QR code to open the link.
+                                        </p>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleDownloadQrCode}
+                                            className="mt-3 gap-2"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            Download QR
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Share options */}
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
                                     <Button
-                                        variant="outline"
                                         size="sm"
                                         onClick={handleNativeShare}
-                                        className="flex items-center gap-2"
+                                        className="flex items-center gap-2 sm:col-span-2"
                                     >
                                         <Share2 className="h-4 w-4" />
-                                        Share
+                                        Share link &amp; QR
                                     </Button>
                                 )}
                                 <Button variant="outline" size="sm" asChild>
@@ -265,6 +414,11 @@ export function CreateShareLinkDialog({
                                     </a>
                                 </Button>
                             </div>
+                            {shareNotice && (
+                                <p className="text-xs leading-relaxed text-muted-foreground" role="status">
+                                    {shareNotice}
+                                </p>
+                            )}
 
                             {/* Done button */}
                             <Button onClick={handleClose} className="w-full">

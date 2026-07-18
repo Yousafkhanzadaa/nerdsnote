@@ -32,9 +32,14 @@ export default function SharedNoteView({
                 "h1", "h2", "h3", "h4", "h5", "h6",
                 "ul", "ol", "li",
                 "blockquote", "pre", "code",
-                "a", "span", "div", "label", "input"
+                "a", "span", "mark", "div", "label", "input",
+                "table", "thead", "tbody", "tfoot", "tr", "th", "td", "colgroup", "col"
             ],
-            ALLOWED_ATTR: ["href", "target", "rel", "class", "type", "checked", "disabled", "data-type", "data-checked"],
+            ALLOWED_ATTR: [
+                "href", "target", "rel", "class", "type", "checked", "disabled",
+                "data-type", "data-checked", "data-color", "data-indent",
+                "colspan", "rowspan", "colwidth"
+            ],
         });
         const parser = new DOMParser();
         const doc = parser.parseFromString(clean, "text/html");
