@@ -178,10 +178,16 @@ export default function AboutPage() {
                 Who makes NerdsNote
               </h2>
               <p className="mt-4 leading-8 text-muted-foreground">
-                NerdsNote is built and maintained by Khueon Studios. The core
-                notepad is free to use, and we intend to keep it that way. If you
-                have feedback or run into a problem, we would genuinely like to
-                hear about it — reach us any time from the{" "}
+                NerdsNote is built and maintained by{" "}
+                <a
+                  href="https://khueonstudios.com"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  Khueon Studios
+                </a>
+                . The core notepad is free to use, and we intend to keep it that
+                way. If you have feedback or run into a problem, we would
+                genuinely like to hear about it — reach us any time from the{" "}
                 <Link
                   href="/contact"
                   className="text-primary underline-offset-4 hover:underline"

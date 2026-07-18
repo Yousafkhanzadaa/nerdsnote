@@ -37,7 +37,7 @@ const sections = [
   {
     title: "Analytics",
     body:
-      "NerdsNote includes Vercel Analytics for aggregate site usage and performance insights. Analytics is not used to read or collect your note content.",
+      "NerdsNote uses privacy-friendly Vercel Web Analytics for aggregate site usage and Vercel Speed Insights for performance metrics. These services do not read or collect your note content.",
   },
   {
     title: "Backups",

@@ -1,6 +1,7 @@
 import { kv } from "@vercel/kv";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { StoredNote } from "@/lib/share-types";
 import { richTextToPlainText } from "@/lib/note-content";
 import SharedNoteView from "./shared-note-view";
@@ -15,7 +16,7 @@ const sharedNoteRobots: Metadata["robots"] = {
 };
 
 // Fetch note data
-async function getNote(slug: string): Promise<StoredNote | null> {
+const getNote = cache(async (slug: string): Promise<StoredNote | null> => {
     try {
         const note = await kv.get<StoredNote>(`note:${slug}`);
         return note;
@@ -23,7 +24,7 @@ async function getNote(slug: string): Promise<StoredNote | null> {
         console.error("[s/slug] Error fetching note:", error);
         return null;
     }
-}
+});
 
 // Generate dynamic metadata for OG tags
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

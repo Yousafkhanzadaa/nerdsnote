@@ -22,7 +22,9 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
 
   if (!isOpen) return null
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
     if (!feedback.trim()) return
 
     setIsSubmitting(true)
@@ -30,7 +32,7 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
 
     try {
       await addDoc(collection(db, "nerdsnote"), {
-        content: feedback,
+        content: feedback.trim(),
         email: email.trim() || null, // Save email if provided, otherwise null
         timestamp: new Date(),
         userAgent: navigator.userAgent,
@@ -51,14 +53,25 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="feedback-dialog-title"
+    >
       <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-0 shadow-lg animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 p-4">
-          <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
+          <h3 id="feedback-dialog-title" className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
             <MessageSquare className="h-5 w-5 shrink-0 text-primary" />
             <span className="truncate">Send Feedback</span>
           </h3>
-          <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 shrink-0 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 w-8 shrink-0 p-0"
+            aria-label="Close feedback dialog"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -78,7 +91,7 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
               </Button>
             </div>
           ) : (
-            <>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <p className="text-sm text-muted-foreground">
                 We'd love to hear your thoughts, suggestions, or report any issues.
               </p>
@@ -102,7 +115,7 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
                 <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit" onClick={handleSubmit} disabled={isSubmitting || !feedback.trim()}>
+                <Button type="submit" disabled={isSubmitting || !feedback.trim()}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -113,7 +126,7 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
                   )}
                 </Button>
               </div>
-            </>
+            </form>
           )}
         </div>
 

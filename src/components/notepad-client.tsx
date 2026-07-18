@@ -591,9 +591,15 @@ export default function NotepadClient() {
                   className="pl-10 w-64"
                 />
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setIsFeedbackDialogOpen(true)} className="hidden sm:flex">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Feedback
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsFeedbackDialogOpen(true)}
+                className="h-9 w-9 shrink-0 p-0 sm:w-auto sm:px-3"
+                aria-label="Send feedback"
+              >
+                <MessageSquare className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Feedback</span>
               </Button>
             </div>
 

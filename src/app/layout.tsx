@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
-import { Suspense } from "react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { ogImage } from "@/lib/structured-data"
 import "./globals.css"
 
@@ -11,8 +11,9 @@ const siteUrl = "https://nerdsnote.com"
 const siteName = "NerdsNote"
 const organization = {
     "@type": "Organization",
+    "@id": "https://khueonstudios.com/#organization",
     "name": "Khueon Studios",
-    "url": "https://www.khueonstudios.com",
+    "url": "https://khueonstudios.com",
     "email": "khueonstudios@gmail.com",
     "logo": `${siteUrl}/web-app-manifest-512x512.png`,
 }
@@ -33,7 +34,7 @@ const structuredData = [
         "@type": "SoftwareApplication",
         "@id": `${siteUrl}/#software`,
         "name": siteName,
-        "applicationCategory": "ProductivityApplication",
+        "applicationCategory": "BrowserApplication",
         "operatingSystem": "Web Browser",
         "url": siteUrl,
         "image": `${siteUrl}/apple-icon.png`,
@@ -149,7 +150,6 @@ export default function RootLayout({
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
-                <link rel="alternate" hrefLang="en" href={`${siteUrl}/`} />
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{
@@ -172,8 +172,9 @@ export default function RootLayout({
                 />
             </head>
             <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-                <Suspense fallback={null}>{children}</Suspense>
+                {children}
                 <Analytics />
+                <SpeedInsights />
             </body>
         </html>
     )

@@ -1,5 +1,4 @@
-import { initializeApp } from "firebase/app";
-import { getAnalytics, isSupported } from "firebase/analytics";
+import { getApp, getApps, initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -8,24 +7,13 @@ const firebaseConfig = {
   projectId: "prompty-script",
   storageBucket: "prompty-script.firebasestorage.app",
   messagingSenderId: "382212639798",
-  appId: "1:382212639798:web:71aedd3a5680877f05dc97",
-  measurementId: "G-LPNJXERC4Z"
+  appId: "1:382212639798:web:71aedd3a5680877f05dc97"
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 // Initialize Firestore
 export const db = getFirestore(app);
 
-// Initialize Analytics (only on client side and if supported)
-let analytics;
-if (typeof window !== 'undefined') {
-  isSupported().then((supported) => {
-    if (supported) {
-      analytics = getAnalytics(app);
-    }
-  });
-}
-
-export { app, analytics };
+export { app };
