@@ -89,16 +89,6 @@ const faqs = [
   },
 ]
 
-const faqStructuredData = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: faqs.map(({ question, answer }) => ({
-    "@type": "Question",
-    name: question,
-    acceptedAnswer: { "@type": "Answer", text: answer },
-  })),
-}
-
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -108,8 +98,6 @@ export default function AboutPage() {
           { name: "About", path: "/about" },
         ])}
       />
-      <JsonLd data={faqStructuredData} />
-
       <header className="border-b border-border">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -123,7 +111,7 @@ export default function AboutPage() {
             <span>NerdsNote</span>
           </Link>
           <Button size="sm" asChild>
-            <Link href="/notepad">
+            <Link href="/notepad" prefetch={false}>
               Start writing
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -235,7 +223,7 @@ export default function AboutPage() {
               </p>
             </div>
             <Button size="lg" asChild>
-              <Link href="/notepad">
+              <Link href="/notepad" prefetch={false}>
                 Open NerdsNote
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -247,12 +235,15 @@ export default function AboutPage() {
       <footer className="border-t border-border">
         <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <p>NerdsNote - free, private online notepad.</p>
-          <nav aria-label="Footer navigation" className="flex gap-4">
+          <nav aria-label="Footer navigation" className="flex flex-wrap gap-4">
             <Link href="/" className="hover:text-foreground">
               Home
             </Link>
             <Link href="/features" className="hover:text-foreground">
               Features
+            </Link>
+            <Link href="/blog" className="hover:text-foreground">
+              Guides
             </Link>
             <Link href="/privacy" className="hover:text-foreground">
               Privacy

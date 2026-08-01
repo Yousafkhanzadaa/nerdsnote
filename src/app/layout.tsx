@@ -4,81 +4,28 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
-import { ogImage } from "@/lib/structured-data"
+import {
+    ogImage,
+    organizationJsonLd,
+    siteName,
+    siteUrl,
+    websiteJsonLd,
+} from "@/lib/structured-data"
 import "./globals.css"
 
-const siteUrl = "https://nerdsnote.com"
-const siteName = "NerdsNote"
-const organization = {
-    "@type": "Organization",
-    "@id": "https://khueonstudios.com/#organization",
-    "name": "Khueon Studios",
-    "url": "https://khueonstudios.com",
-    "email": "khueonstudios@gmail.com",
-    "logo": `${siteUrl}/web-app-manifest-512x512.png`,
-}
-
-const structuredData = [
-    {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "@id": `${siteUrl}/#website`,
-        "name": siteName,
-        "url": siteUrl,
-        "description": "A free, private online notepad for local-first writing in the browser.",
-        "inLanguage": "en",
-        "publisher": organization,
-    },
-    {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "@id": `${siteUrl}/#software`,
-        "name": siteName,
-        "applicationCategory": "BrowserApplication",
-        "operatingSystem": "Web Browser",
-        "url": siteUrl,
-        "image": `${siteUrl}/apple-icon.png`,
-        "description": "Free, private, distraction-free online notepad with local auto-save, offline access, dark mode, search, import, and export.",
-        "isAccessibleForFree": true,
-        "featureList": [
-            "Local auto-save",
-            "Offline support",
-            "Dark mode",
-            "Search",
-            "Import text files",
-            "Export notes",
-            "Optional local folder sync"
-        ],
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        },
-        "author": organization,
-        "publisher": organization,
-    },
-]
+const structuredData = [organizationJsonLd, websiteJsonLd]
 
 export const metadata: Metadata = {
     applicationName: siteName,
     title: "NerdsNote — Free Online Notepad | Distraction‑Free, Private, Fast",
     description:
         "NerdsNote is a free online notepad for distraction‑free writing. No login, no ads. Auto‑save to your device, dark mode, import/export, search, and offline support.",
-    keywords: [
-        "free online notepad",
-        "distraction-free writing app",
-        "private notes",
-        "browser notepad",
-        "localStorage notes",
-        "no login notes",
-        "offline notepad",
-        "minimal note-taking app",
-        "developer notepad",
-        "quick notes",
-    ],
     metadataBase: new URL(siteUrl),
     alternates: {
         canonical: "/",
+        types: {
+            "application/rss+xml": "/feed.xml",
+        },
     },
     category: "productivity",
     creator: "Khueon Studios",
@@ -127,6 +74,11 @@ export const metadata: Metadata = {
     robots: {
         index: true,
         follow: true,
+    },
+    formatDetection: {
+        email: false,
+        address: false,
+        telephone: false,
     },
     appleWebApp: {
         title: siteName,

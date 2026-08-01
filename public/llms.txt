@@ -17,6 +17,13 @@ Key facts:
 - [Notepad editor](https://nerdsnote.com/notepad): The editor itself — open it to write notes directly in the browser.
 - [Features](https://nerdsnote.com/features): Full feature list (autosave, dark mode, offline, search, import/export, folder sync).
 - [About](https://nerdsnote.com/about): Why NerdsNote exists, how it works, and who it is for.
+- [Guides](https://nerdsnote.com/blog): Practical articles about private browser notes, backups, and better writing workflows.
+
+## Popular guides
+
+- [How to take private notes online without an account](https://nerdsnote.com/blog/private-online-notepad-no-login): Privacy checks, safe usage, browser-storage limits, and backups.
+- [Browser storage vs cloud notes](https://nerdsnote.com/blog/browser-storage-vs-cloud-notes): A comparison of privacy, sync, recovery, sharing, and portability.
+- [How to take better meeting notes](https://nerdsnote.com/blog/how-to-take-better-meeting-notes): A practical meeting-notes template with decisions and action items.
 
 ## Policies
 

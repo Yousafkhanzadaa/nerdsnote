@@ -41,7 +41,7 @@ export default function ContactPage() {
             <span>NerdsNote</span>
           </Link>
           <Button size="sm" asChild>
-            <Link href="/notepad">Start writing</Link>
+            <Link href="/notepad" prefetch={false}>Start writing</Link>
           </Button>
         </div>
       </header>

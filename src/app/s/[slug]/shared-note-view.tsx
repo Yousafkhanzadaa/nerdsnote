@@ -121,7 +121,7 @@ export default function SharedNoteView({
                     </p>
                     <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
                         <Button asChild size="lg">
-                            <Link href="/notepad">
+                            <Link href="/notepad" prefetch={false}>
                                 Start writing — it&apos;s free
                                 <ArrowUpRight className="ml-2 h-4 w-4" />
                             </Link>

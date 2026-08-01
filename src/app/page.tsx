@@ -3,6 +3,7 @@ import Image from "next/image"
 import Link from "next/link"
 import {
   ArrowRight,
+  BookOpen,
   Check,
   CheckCircle2,
   Download,
@@ -19,6 +20,9 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { JsonLd } from "@/components/json-ld"
+import { blogPosts, formatBlogDate } from "@/lib/blog-posts"
+import { softwareApplicationJsonLd } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "NerdsNote - Free Online Notepad for Private Notes",
@@ -56,6 +60,10 @@ const workflows = [
   },
 ]
 
+const latestGuides = [...blogPosts]
+  .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+  .slice(0, 3)
+
 const faqs = [
   {
     question: "Is NerdsNote free?",
@@ -88,20 +96,6 @@ const faqs = [
       "Not by default. Notes stay local unless you create a share link or use an optional local folder workflow in a supported browser.",
   },
 ]
-
-// FAQPage structured data so the homepage FAQ is eligible for rich results.
-const faqStructuredData = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: faqs.map(({ question, answer }) => ({
-    "@type": "Question",
-    name: question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: answer,
-    },
-  })),
-}
 
 // A stylized, in-browser preview of the editor — the hero's focal visual.
 function EditorPreview() {
@@ -226,12 +220,7 @@ function FeatureCard({
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqStructuredData).replace(/</g, "\\u003c"),
-        }}
-      />
+      <JsonLd data={softwareApplicationJsonLd} />
       <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -246,11 +235,14 @@ export default function HomePage() {
             <span>NerdsNote</span>
           </Link>
           <nav aria-label="Primary navigation" className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
+              <Link href="/blog">Guides</Link>
+            </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/features">Features</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="/notepad">
+              <Link href="/notepad" prefetch={false}>
                 Start writing
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -268,7 +260,7 @@ export default function HomePage() {
             className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-hero-glow"
           />
           <div className="container relative mx-auto max-w-5xl px-4 py-20 text-center md:py-28">
-            <div className="animate-in fade-in slide-in-from-bottom-3 duration-700">
+            <div>
               <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm font-medium text-muted-foreground backdrop-blur">
                 <Lock className="h-4 w-4 text-primary" aria-hidden="true" />
                 Free, private, and local-first — no account required
@@ -284,7 +276,7 @@ export default function HomePage() {
               </p>
               <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Button size="lg" asChild>
-                  <Link href="/notepad">
+                  <Link href="/notepad" prefetch={false}>
                     Open the notepad
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
@@ -305,7 +297,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="mx-auto mt-16 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="mx-auto mt-16 max-w-4xl">
               <EditorPreview />
             </div>
           </div>
@@ -485,6 +477,65 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Editorial guides */}
+        <section className="border-b border-border">
+          <div className="container mx-auto max-w-6xl px-4 py-20">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-2xl">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-sm font-medium text-muted-foreground">
+                  <BookOpen className="h-4 w-4 text-primary" aria-hidden="true" />
+                  Practical writing guides
+                </div>
+                <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+                  Make better notes—and know where they live.
+                </h2>
+                <p className="mt-4 leading-7 text-muted-foreground">
+                  Clear, experience-led guidance on browser privacy, reliable
+                  backups, and note-taking workflows that hold up after the meeting.
+                </p>
+              </div>
+              <Link
+                href="/blog"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+              >
+                Explore all guides
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {latestGuides.map((post) => (
+                <article
+                  key={post.slug}
+                  className="flex flex-col rounded-xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg"
+                >
+                  <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
+                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">
+                      {post.category}
+                    </span>
+                    <time dateTime={post.updatedAt}>{formatBlogDate(post.updatedAt)}</time>
+                  </div>
+                  <h3 className="mt-5 text-xl font-bold leading-7">
+                    <Link href={`/blog/${post.slug}`} className="hover:underline">
+                      {post.title}
+                    </Link>
+                  </h3>
+                  <p className="mt-3 flex-1 text-sm leading-6 text-muted-foreground">
+                    {post.excerpt}
+                  </p>
+                  <Link
+                    href={`/blog/${post.slug}`}
+                    className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary"
+                  >
+                    Read guide
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* FAQ */}
         <section className="border-b border-border bg-muted/25">
           <div className="container mx-auto max-w-6xl px-4 py-20">
@@ -528,7 +579,7 @@ export default function HomePage() {
               </p>
               <div className="mt-8">
                 <Button size="lg" asChild>
-                  <Link href="/notepad">
+                  <Link href="/notepad" prefetch={false}>
                     Open NerdsNote
                     <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
@@ -542,7 +593,7 @@ export default function HomePage() {
       <footer className="border-t border-border">
         <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <p>NerdsNote - free, private online notepad.</p>
-          <nav aria-label="Footer navigation" className="flex gap-4">
+          <nav aria-label="Footer navigation" className="flex flex-wrap gap-4">
             <Link href="/about" className="hover:text-foreground">
               About
             </Link>
@@ -557,6 +608,9 @@ export default function HomePage() {
             </Link>
             <Link href="/features" className="hover:text-foreground">
               Features
+            </Link>
+            <Link href="/blog" className="hover:text-foreground">
+              Guides
             </Link>
           </nav>
         </div>

@@ -113,7 +113,7 @@ export default function FeaturesPage() {
             <span>NerdsNote</span>
           </Link>
           <Button size="sm" asChild>
-            <Link href="/notepad">Start writing</Link>
+            <Link href="/notepad" prefetch={false}>Start writing</Link>
           </Button>
         </div>
       </header>
@@ -155,7 +155,7 @@ export default function FeaturesPage() {
               </p>
             </div>
             <Button size="lg" asChild>
-              <Link href="/notepad">Open NerdsNote</Link>
+              <Link href="/notepad" prefetch={false}>Open NerdsNote</Link>
             </Button>
           </div>
         </section>
@@ -164,7 +164,10 @@ export default function FeaturesPage() {
       <footer className="border-t border-border">
         <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
           <p>NerdsNote - local-first writing in your browser.</p>
-          <nav aria-label="Footer navigation" className="flex gap-4">
+          <nav aria-label="Footer navigation" className="flex flex-wrap gap-4">
+            <Link href="/blog" className="hover:text-foreground">
+              Guides
+            </Link>
             <Link href="/privacy" className="hover:text-foreground">
               Privacy
             </Link>

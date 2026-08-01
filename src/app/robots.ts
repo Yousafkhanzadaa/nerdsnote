@@ -10,7 +10,5 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: `https://nerdsnote.com/sitemap.xml`,
-    host: "https://nerdsnote.com",
   }
 }
-

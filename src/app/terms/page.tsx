@@ -67,7 +67,7 @@ export default function TermsPage() {
             <span>NerdsNote</span>
           </Link>
           <Button size="sm" asChild>
-            <Link href="/notepad">Start writing</Link>
+            <Link href="/notepad" prefetch={false}>Start writing</Link>
           </Button>
         </div>
       </header>
