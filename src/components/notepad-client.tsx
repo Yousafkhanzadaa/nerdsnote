@@ -19,6 +19,7 @@ import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
+import { consumeLandingDraftHandoff, landingDraftTitle } from "@/lib/landing-draft"
 import { normalizeNoteContent, notePreviewText, richTextToPlainText } from "@/lib/note-content"
 import { ParagraphIndent } from "@/lib/tiptap/paragraph-indent"
 
@@ -63,6 +64,7 @@ export default function NotepadClient() {
   const [showAnnouncement, setShowAnnouncement] = useState(false)
   const [folderSyncNotice, setFolderSyncNotice] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
+  const [isStorageReady, setIsStorageReady] = useState(false)
 
   // File System Storage State
   const [isFileSystemSupported, setIsFileSystemSupported] = useState(false)
@@ -303,37 +305,79 @@ export default function NotepadClient() {
 
   // Initialize File System Storage
   useEffect(() => {
-    if (FileSystemStorage.isSupported()) {
-      setIsFileSystemSupported(true)
-      fileSystemStorage.loadHandle().then(async (success) => {
-        if (success) {
-          const hasWriteAccess = await fileSystemStorage.hasPermission("readwrite")
-          if (!hasWriteAccess) {
-            await handleFolderSyncUnavailable()
-            return
-          }
+    const initializeFileSystem = async () => {
+      if (!FileSystemStorage.isSupported()) {
+        setIsStorageReady(true)
+        return
+      }
 
-          const name = fileSystemStorage.getDirectoryName()
-          setConnectedDirectoryName(name)
-          setFolderSyncNotice(null)
-          // If connected, load notes from FS
-          try {
-            const fsNotes = await fileSystemStorage.loadNotes()
-            if (fsNotes.length > 0) {
-              setNotes(fsNotes)
-              setActiveNoteId(fsNotes[0].id)
-            }
-          } catch (error) {
-            if (isFileSystemPermissionError(error)) {
-              await handleFolderSyncUnavailable()
-            } else {
-              console.error("Failed to load notes from connected folder:", error)
-            }
-          }
+      setIsFileSystemSupported(true)
+
+      try {
+        const success = await fileSystemStorage.loadHandle()
+        if (!success) return
+
+        const hasWriteAccess = await fileSystemStorage.hasPermission("readwrite")
+        if (!hasWriteAccess) {
+          await handleFolderSyncUnavailable()
+          return
         }
+
+        const name = fileSystemStorage.getDirectoryName()
+        setConnectedDirectoryName(name)
+        setFolderSyncNotice(null)
+
+        const fsNotes = await fileSystemStorage.loadNotes()
+        if (fsNotes.length > 0) {
+          setNotes(fsNotes)
+          setActiveNoteId(fsNotes[0].id)
+        }
+      } catch (error) {
+        if (isFileSystemPermissionError(error)) {
+          await handleFolderSyncUnavailable()
+        } else {
+          console.error("Failed to load notes from connected folder:", error)
+        }
+      } finally {
+        setIsStorageReady(true)
+      }
+    }
+
+    void initializeFileSystem()
+  }, [])
+
+  // Move an explicitly continued landing-page draft into a real note only
+  // after browser/folder storage has finished loading, so it cannot be
+  // overwritten by the asynchronous folder restore.
+  useEffect(() => {
+    if (!isStorageReady) return
+
+    let landingDraft: string | null = null
+
+    try {
+      landingDraft = consumeLandingDraftHandoff(localStorage)
+    } catch (error) {
+      console.error("Failed to read the landing-page draft:", error)
+    }
+
+    if (!landingDraft) return
+
+    const importedNote: Note = {
+      id: `landing-${Date.now()}`,
+      title: landingDraftTitle(landingDraft),
+      content: normalizeNoteContent(landingDraft),
+      lastModified: new Date(),
+    }
+
+    setNotes((previousNotes) => [importedNote, ...previousNotes])
+    setActiveNoteId(importedNote.id)
+
+    if (fileSystemStorage.getDirectoryName()) {
+      void fileSystemStorage.saveNote(importedNote).catch((error) => {
+        console.error("Failed to save the landing-page draft to the connected folder:", error)
       })
     }
-  }, [])
+  }, [isStorageReady])
 
   const handleConnectDirectory = async () => {
     try {

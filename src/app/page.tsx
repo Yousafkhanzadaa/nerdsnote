@@ -4,7 +4,6 @@ import Link from "next/link"
 import {
   ArrowRight,
   BookOpen,
-  Check,
   CheckCircle2,
   Download,
   FileText,
@@ -21,6 +20,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { JsonLd } from "@/components/json-ld"
+import { MiniNotepadPreview } from "@/components/mini-notepad-preview"
 import { blogPosts, formatBlogDate } from "@/lib/blog-posts"
 import { softwareApplicationJsonLd } from "@/lib/structured-data"
 
@@ -96,102 +96,6 @@ const faqs = [
       "Not by default. Notes stay local unless you create a share link or use an optional local folder workflow in a supported browser.",
   },
 ]
-
-// A stylized, in-browser preview of the editor — the hero's focal visual.
-function EditorPreview() {
-  return (
-    <div className="relative">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -inset-x-6 -top-8 bottom-0 bg-hero-glow"
-      />
-      <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-elevated">
-        {/* Window chrome */}
-        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
-          <div className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-foreground/25" />
-            <span className="h-3 w-3 rounded-full bg-foreground/15" />
-            <span className="h-3 w-3 rounded-full bg-foreground/10" />
-          </div>
-          <div className="ml-3 flex items-center gap-2 truncate text-xs font-medium text-muted-foreground">
-            <FileText className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-            Product launch — notes
-          </div>
-          <div className="ml-auto hidden items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-[11px] font-medium text-primary sm:flex">
-            <Lock className="h-3 w-3" aria-hidden="true" />
-            Private
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-[170px_1fr]">
-          {/* Sidebar */}
-          <div className="hidden flex-col gap-1.5 border-r border-border bg-muted/20 p-3 sm:flex">
-            <div className="mb-1 flex items-center gap-2 rounded-md bg-primary px-2.5 py-2 text-[11px] font-semibold text-primary-foreground shadow-sm">
-              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-              Product launch
-            </div>
-            {["Weekly review", "Reading list", "Trip plan"].map((label) => (
-              <div
-                key={label}
-                className="flex items-center gap-2 rounded-md px-2.5 py-2 text-[11px] text-muted-foreground"
-              >
-                <FileText className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
-                {label}
-              </div>
-            ))}
-          </div>
-
-          {/* Editor body */}
-          <div className="space-y-3 p-5 text-sm">
-            <div className="text-base font-semibold text-foreground">
-              Launch checklist
-            </div>
-            <p className="leading-relaxed text-muted-foreground">
-              Everything for Thursday, in one private note. Auto-saved as you
-              type.
-            </p>
-            <div className="space-y-2">
-              {[
-                { label: "Finalize landing page copy", done: true },
-                { label: "Ship the new editor", done: true },
-                { label: "Schedule announcement", done: false },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2.5">
-                  <span
-                    className={
-                      item.done
-                        ? "flex h-4 w-4 items-center justify-center rounded border border-primary bg-primary text-primary-foreground"
-                        : "h-4 w-4 rounded border border-muted-foreground/40"
-                    }
-                  >
-                    {item.done && <Check className="h-3 w-3" aria-hidden="true" />}
-                  </span>
-                  <span
-                    className={
-                      item.done
-                        ? "text-muted-foreground line-through"
-                        : "text-foreground"
-                    }
-                  >
-                    {item.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="border-l-2 border-primary/40 pl-3 text-muted-foreground italic">
-              Stays on this device unless I share it.
-            </div>
-            <div className="flex items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-              <span>142 words</span>
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-              <span className="text-primary">Auto-saved in browser</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function FeatureCard({
   icon: Icon,
@@ -298,7 +202,7 @@ export default function HomePage() {
             </div>
 
             <div className="mx-auto mt-16 max-w-4xl">
-              <EditorPreview />
+              <MiniNotepadPreview />
             </div>
           </div>
         </section>
