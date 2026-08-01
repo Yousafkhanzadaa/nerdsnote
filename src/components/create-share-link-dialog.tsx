@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Modal, ModalClose, ModalDescription, ModalTitle } from "@/components/ui/modal";
 import {
     Link2,
     Copy,
@@ -16,8 +16,15 @@ import {
     Clock,
     AlertCircle,
     Download,
+    Trash2,
 } from "lucide-react";
 import type { ExpiryOption, ShareNoteResponse, ShareNoteError } from "@/lib/share-types";
+import {
+    loadManagedShares,
+    removeManagedShare,
+    saveManagedShare,
+    type ManagedShare,
+} from "@/lib/share-management";
 
 interface CreateShareLinkDialogProps {
     isOpen: boolean;
@@ -25,7 +32,7 @@ interface CreateShareLinkDialogProps {
     noteContent: string;
 }
 
-type DialogState = "consent" | "loading" | "success" | "error";
+type DialogState = "consent" | "loading" | "success" | "revoked" | "error";
 
 const EXPIRY_OPTIONS: { value: ExpiryOption; label: string }[] = [
     { value: "1d", label: "1 day" },
@@ -49,9 +56,16 @@ export function CreateShareLinkDialog({
     const [error, setError] = useState("");
     const [copied, setCopied] = useState(false);
     const [shareNotice, setShareNotice] = useState("");
+    const [managedShares, setManagedShares] = useState<ManagedShare[]>([]);
+    const [currentShare, setCurrentShare] = useState<ManagedShare | null>(null);
+    const [revokingSlug, setRevokingSlug] = useState<string | null>(null);
     const qrCodeRef = useRef<SVGSVGElement>(null);
 
-    if (!isOpen) return null;
+    useEffect(() => {
+        if (isOpen) {
+            setManagedShares(loadManagedShares(localStorage));
+        }
+    }, [isOpen]);
 
     const handleClose = () => {
         setState("consent");
@@ -59,6 +73,8 @@ export function CreateShareLinkDialog({
         setShareUrl("");
         setCopied(false);
         setShareNotice("");
+        setCurrentShare(null);
+        setRevokingSlug(null);
         onClose();
     };
 
@@ -92,6 +108,20 @@ export function CreateShareLinkDialog({
             }
 
             const successData = data as ShareNoteResponse;
+            if (!successData.slug || !successData.revokeToken || !successData.expiresAt) {
+                throw new Error("The server returned an incomplete share link");
+            }
+
+            const managedShare: ManagedShare = {
+                slug: successData.slug,
+                url: successData.url,
+                revokeToken: successData.revokeToken,
+                expiresAt: successData.expiresAt,
+                createdAt: new Date().toISOString(),
+            };
+            saveManagedShare(localStorage, managedShare);
+            setManagedShares(loadManagedShares(localStorage));
+            setCurrentShare(managedShare);
             setShareUrl(successData.url);
             setExpiresAt(successData.expiresAt);
             setState("success");
@@ -107,6 +137,39 @@ export function CreateShareLinkDialog({
         } catch {
             setError("Network error. Please check your connection and try again.");
             setState("error");
+        }
+    };
+
+    const handleRevoke = async (share: ManagedShare) => {
+        setRevokingSlug(share.slug);
+        setShareNotice("");
+
+        try {
+            const response = await fetch(`/api/share/${share.slug}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ revokeToken: share.revokeToken }),
+            });
+
+            if (!response.ok && response.status !== 404) {
+                const data = (await response.json().catch(() => null)) as { error?: string } | null;
+                throw new Error(data?.error || "Unable to revoke this link");
+            }
+
+            removeManagedShare(localStorage, share.slug);
+            setManagedShares(loadManagedShares(localStorage));
+
+            if (currentShare?.slug === share.slug) {
+                setState("revoked");
+            } else {
+                setShareNotice("The shared link was revoked.");
+            }
+        } catch (revokeError) {
+            setShareNotice(
+                revokeError instanceof Error ? revokeError.message : "Unable to revoke this link.",
+            );
+        } finally {
+            setRevokingSlug(null);
         }
     };
 
@@ -250,17 +313,24 @@ export function CreateShareLinkDialog({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-0 shadow-lg animate-in fade-in zoom-in-95 duration-200">
+        <Modal open={isOpen} onOpenChange={(open) => !open && handleClose()}>
                 {/* Header */}
                 <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 p-4">
-                    <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
+                    <ModalTitle className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
                         <Link2 className="h-5 w-5 shrink-0 text-primary" />
-                        <span className="truncate">{state === "success" ? "Link Created!" : "Create a shareable link?"}</span>
-                    </h3>
-                    <Button variant="ghost" size="sm" onClick={handleClose} className="h-8 w-8 shrink-0 p-0">
-                        <X className="h-4 w-4" />
-                    </Button>
+                        <span className="truncate">
+                            {state === "success"
+                                ? "Link Created!"
+                                : state === "revoked"
+                                  ? "Link Revoked"
+                                  : "Create a shareable link?"}
+                        </span>
+                    </ModalTitle>
+                    <ModalClose asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" aria-label="Close share dialog">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </ModalClose>
                 </div>
 
                 {/* Body */}
@@ -268,9 +338,9 @@ export function CreateShareLinkDialog({
                     {/* Consent State */}
                     {state === "consent" && (
                         <div className="space-y-4">
-                            <p className="text-muted-foreground text-sm leading-relaxed">
-                                This will upload your note to NerdsNote so anyone with the link can view it. The link expires after {selectedExpiryLabel}. We won't track readers. Continue?
-                            </p>
+                            <ModalDescription className="text-muted-foreground text-sm leading-relaxed">
+                                This will upload your note to NerdsNote so anyone with the link can view it. The link expires after {selectedExpiryLabel}. We won&apos;t track readers. Continue?
+                            </ModalDescription>
 
                             {/* Expiry selector */}
                             <div className="space-y-2">
@@ -303,6 +373,43 @@ export function CreateShareLinkDialog({
                                     Create Link
                                 </Button>
                             </div>
+
+                            {managedShares.length > 0 && (
+                                <div className="border-t border-border pt-4">
+                                    <p className="text-sm font-semibold">Recent links from this browser</p>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        Revocation keys stay only in this browser.
+                                    </p>
+                                    <div className="mt-3 space-y-2">
+                                        {managedShares.slice(0, 5).map((share) => (
+                                            <div key={share.slug} className="flex items-center gap-2 rounded-md border border-border p-2">
+                                                <a
+                                                    href={share.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="min-w-0 flex-1 truncate text-xs text-primary underline-offset-4 hover:underline"
+                                                >
+                                                    {share.url}
+                                                </a>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleRevoke(share)}
+                                                    disabled={revokingSlug === share.slug}
+                                                    aria-label={`Revoke ${share.url}`}
+                                                >
+                                                    {revokingSlug === share.slug ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -325,9 +432,6 @@ export function CreateShareLinkDialog({
                                         The note will expire on {formatExpiryDate(expiresAt)}.
                                     </span>
                                 )}
-                                {!expiresAt && (
-                                    <span className="block mt-1">This link will never expire.</span>
-                                )}
                             </div>
 
                             {/* URL display with copy */}
@@ -338,7 +442,7 @@ export function CreateShareLinkDialog({
                                     value={shareUrl}
                                     className="min-w-0 flex-1 rounded-md border border-input bg-muted/50 px-3 py-2 font-mono text-sm"
                                 />
-                                <Button variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
+                                <Button variant="outline" size="sm" onClick={handleCopy} className="shrink-0" aria-label="Copy share link">
                                     {copied ? (
                                         <Check className="h-4 w-4 text-green-600" />
                                     ) : (
@@ -414,6 +518,23 @@ export function CreateShareLinkDialog({
                                     </a>
                                 </Button>
                             </div>
+
+                            {currentShare && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleRevoke(currentShare)}
+                                    disabled={revokingSlug === currentShare.slug}
+                                    className="w-full"
+                                >
+                                    {revokingSlug === currentShare.slug ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                    )}
+                                    Revoke this link
+                                </Button>
+                            )}
                             {shareNotice && (
                                 <p className="text-xs leading-relaxed text-muted-foreground" role="status">
                                     {shareNotice}
@@ -424,6 +545,21 @@ export function CreateShareLinkDialog({
                             <Button onClick={handleClose} className="w-full">
                                 Done
                             </Button>
+                        </div>
+                    )}
+
+                    {state === "revoked" && (
+                        <div className="space-y-4 py-6 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                                <Trash2 className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div>
+                                <p className="font-semibold">This share link no longer works.</p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    The public copy was removed from NerdsNote.
+                                </p>
+                            </div>
+                            <Button onClick={handleClose} className="w-full">Done</Button>
                         </div>
                     )}
 
@@ -446,7 +582,6 @@ export function CreateShareLinkDialog({
                         </div>
                     )}
                 </div>
-            </Card >
-        </div >
+        </Modal>
     );
 }

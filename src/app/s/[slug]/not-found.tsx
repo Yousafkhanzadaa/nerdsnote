@@ -11,7 +11,7 @@ export default function NotFound() {
                 </div>
                 <h1 className="text-3xl font-bold mb-4">Note Not Found</h1>
                 <p className="text-muted-foreground max-w-md mb-8 leading-relaxed">
-                    This note doesn't exist or has expired. Shared notes auto-expire after a set period to protect your privacy.
+                    This note doesn&apos;t exist or has expired. Shared notes auto-expire after a set period to protect your privacy.
                 </p>
                 <Button asChild size="lg">
                     <Link href="/">

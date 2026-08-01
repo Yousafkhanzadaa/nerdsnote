@@ -1,10 +1,10 @@
-import { kv } from "@vercel/kv";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { StoredNote } from "@/lib/share-types";
 import { richTextToPlainText } from "@/lib/note-content";
 import SharedNoteView from "./shared-note-view";
+import { getRedis } from "@/lib/redis";
 
 interface PageProps {
     params: Promise<{ slug: string }>;
@@ -18,7 +18,7 @@ const sharedNoteRobots: Metadata["robots"] = {
 // Fetch note data
 const getNote = cache(async (slug: string): Promise<StoredNote | null> => {
     try {
-        const note = await kv.get<StoredNote>(`note:${slug}`);
+        const note = await getRedis().get<StoredNote>(`note:${slug}`);
         return note;
     } catch (error) {
         console.error("[s/slug] Error fetching note:", error);

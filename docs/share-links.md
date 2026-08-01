@@ -1,180 +1,71 @@
 # Shareable Note Links — Deployment Guide
 
-This document covers the shareable note links feature, including setup, environment variables, and verification steps.
+NerdsNote can create public, read-only note links backed by Upstash-compatible Redis.
 
-## Overview
+## Behavior and limits
 
-The shareable links feature allows users to create public, read-only links to their notes. Notes are stored in Vercel KV (Redis-compatible) with configurable expiry times.
+- Expiry is mandatory: 1 day, 7 days (default), or 30 days.
+- Notes are limited to 50KB and creation is limited to 20 requests per IP per hour.
+- Each link receives a separate revocation secret. Only its SHA-256 hash is stored server-side.
+- The creating browser keeps up to 20 unexpired link/revocation pairs in local storage so the user can revoke them.
+- Shared HTML is sanitized against a restricted tag and attribute allowlist before rendering.
+- Shared pages are `noindex`, and API responses use `private, no-store` caching.
 
-**Key Features:**
-- One-click "Create Link" from the editor
-- Short URLs: `https://<site>/s/<slug>`
-- Configurable expiry: 1 day, 7 days (default), 30 days, or never
-- Read-only public page with OG meta tags for social previews
-- Rate limiting: 20 shares per hour per IP
-- Size limit: 50KB per note
+## Environment variables
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         Frontend                            │
-├─────────────────────────────────────────────────────────────┤
-│  notepad-client.tsx                                         │
-│    └── CreateShareLinkDialog                                │
-│         • Consent modal with expiry selection               │
-│         • POST /api/share → receives URL                    │
-│         • Auto-copy to clipboard                            │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      API Routes                             │
-├─────────────────────────────────────────────────────────────┤
-│  POST /api/share                                            │
-│    • Validate content (size, empty)                         │
-│    • Check rate limit (per IP)                              │
-│    • Generate slug with nanoid(8)                           │
-│    • Store in Vercel KV with TTL                            │
-│    • Return { url, slug, expiresAt }                        │
-├─────────────────────────────────────────────────────────────┤
-│  GET /api/share/[slug]                                      │
-│    • Fetch note from KV                                     │
-│    • Return JSON { content, createdAt, expiresAt }          │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    SSR Page                                 │
-├─────────────────────────────────────────────────────────────┤
-│  /s/[slug]/page.tsx                                         │
-│    • Server-side fetch from KV                              │
-│    • Generate OG meta tags (title, description)             │
-│    • Render read-only SharedNoteView                        │
-│    • Handle 404 with not-found.tsx                          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `KV_REST_API_URL` | Yes | Vercel KV REST API URL (auto-set when KV store attached) |
-| `KV_REST_API_TOKEN` | Yes | Vercel KV REST API token (auto-set when KV store attached) |
-| `NEXT_PUBLIC_APP_URL` | Yes | Production URL for generating share links (e.g., `https://nerdsnote.com`) |
-
-## Setup Instructions
-
-### 1. Create Vercel KV Store
-
-1. Go to your Vercel project dashboard
-2. Navigate to **Storage** → **Create Database**
-3. Select **KV** (Redis-compatible key-value store)
-4. Choose a name (e.g., `nerdsnote-kv`) and region
-5. Click **Create**
-
-The `KV_REST_API_URL` and `KV_REST_API_TOKEN` environment variables will be automatically added to your project.
-
-### 2. Add App URL Environment Variable
-
-Add `NEXT_PUBLIC_APP_URL` to your Vercel project:
-
-1. Go to **Settings** → **Environment Variables**
-2. Add:
-   - **Name:** `NEXT_PUBLIC_APP_URL`
-   - **Value:** `https://nerdsnote.com` (your production URL)
-   - **Environments:** Production, Preview, Development
-
-### 3. Local Development
-
-For local development, create or update `.env.local`:
+Use either the existing KV-compatible names or the native Upstash names:
 
 ```bash
-# Vercel KV (get from Vercel dashboard → Storage → KV → Settings)
-KV_REST_API_URL=https://your-kv-url.kv.vercel-storage.com
-KV_REST_API_TOKEN=your-token-here
+KV_REST_API_URL=...
+KV_REST_API_TOKEN=...
 
-# App URL (use localhost for dev)
+# Alternatively:
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### 4. Deploy
+`NEXT_PUBLIC_APP_URL` defaults to `https://nerdsnote.com` when omitted.
 
-Deploy to Vercel:
+## API
 
-```bash
-vercel deploy --prod
+`POST /api/share`
+
+```json
+{ "content": "<p>Hello</p>", "expiresIn": "7d" }
 ```
+
+The response includes `url`, `slug`, `expiresAt`, and a one-time `revokeToken`. Do not log or expose that token.
+
+`DELETE /api/share/:slug`
+
+```json
+{ "revokeToken": "the secret returned at creation" }
+```
+
+`GET /api/share/:slug` returns the public content and timestamps.
 
 ## Verification
 
-### Quick Test
-
 ```bash
-# Create a share link
-curl -X POST https://nerdsnote.com/api/share \
+curl -X POST http://localhost:3000/api/share \
   -H "Content-Type: application/json" \
-  -d '{"content": "Hello, world!", "expiresIn": "7d"}'
-
-# Expected response:
-# {"ok":true,"url":"https://nerdsnote.com/s/abc12345","slug":"abc12345","expiresAt":"2026-02-13T18:00:00.000Z"}
+  -d '{"content":"Hello, world!","expiresIn":"7d"}'
 ```
 
-### Manual Verification Checklist
+- Open the returned URL and confirm the read-only page renders.
+- Revoke it from the creator browser and confirm the URL returns 404.
+- Confirm `expiresIn: "never"` returns 400.
+- Confirm a payload over 50KB returns 413.
+- Confirm request 21 from the same IP within one hour returns 429.
 
-- [ ] Create note → Click "Create Link" → Consent modal appears
-- [ ] Select expiry → Click "Create Link" → URL copied to clipboard
-- [ ] Open `/s/<slug>` → Read-only note page displays
-- [ ] Share link in Slack/Discord → OG preview shows title and description
-- [ ] Wait for expiry or delete key → 404 page with CTA appears
-- [ ] Send 21 requests in 1 hour → 429 rate limit response
-- [ ] Send >50KB content → 413 size limit response
+## Relevant files
 
-## File Locations
-
-```
-src/
-├── app/
-│   ├── api/
-│   │   └── share/
-│   │       ├── route.ts              # POST /api/share
-│   │       └── [slug]/
-│   │           └── route.ts          # GET /api/share/:slug
-│   └── s/
-│       └── [slug]/
-│           ├── page.tsx              # SSR shared note page
-│           ├── shared-note-view.tsx  # Client component
-│           └── not-found.tsx         # 404 page
-├── components/
-│   ├── create-share-link-dialog.tsx  # Consent modal + success UI
-│   └── notepad-client.tsx            # Main editor (modified)
-├── lib/
-│   └── share-types.ts                # Shared types and constants
-docs/
-└── share-links.md                    # This file
-tests/
-└── share.test.ts                     # Unit tests
-```
-
-## Rollback
-
-To disable the feature temporarily:
-
-1. Delete or rename the API routes:
-   - `/src/app/api/share/route.ts`
-   - `/src/app/api/share/[slug]/route.ts`
-   - `/src/app/s/[slug]/` directory
-
-2. Remove the "Create Link" button from `notepad-client.tsx`
-
-3. Redeploy
-
-To restore, revert the file deletions and redeploy.
-
-## Security Considerations
-
-1. **XSS Prevention**: Notes are rendered as escaped plain text using `<pre>` with HTML entity encoding
-2. **Rate Limiting**: 20 shares per hour per IP via KV counter with TTL
-3. **Size Limit**: 50KB maximum note size enforced server-side
-4. **No Content Logging**: Only metadata (slug, size) is logged, never note content
-5. **Auto-Expiry**: Notes expire by default (7 days) to limit data retention
+- `src/app/api/share/route.ts` — create link
+- `src/app/api/share/[slug]/route.ts` — read and revoke link
+- `src/app/s/[slug]/page.tsx` — public page
+- `src/components/create-share-link-dialog.tsx` — creation and revocation UI
+- `src/lib/redis.ts` — Redis configuration
+- `src/lib/share-management.ts` — creator-browser revocation storage
+- `tests/share.test.ts` — route and security regression tests

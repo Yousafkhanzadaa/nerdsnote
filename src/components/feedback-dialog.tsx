@@ -1,12 +1,10 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Modal, ModalClose, ModalDescription, ModalTitle } from "@/components/ui/modal"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { MessageSquare, Send, X, Loader2, CheckCircle, Check } from "lucide-react"
-import { db } from "@/lib/firebase"
-import { collection, addDoc } from "firebase/firestore"
+import { MessageSquare, X, Loader2, Check } from "lucide-react"
 
 interface FeedbackDialogProps {
   isOpen: boolean
@@ -20,8 +18,6 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (!isOpen) return null
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -31,12 +27,20 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
     setError(null)
 
     try {
-      await addDoc(collection(db, "nerdsnote"), {
-        content: feedback.trim(),
-        email: email.trim() || null, // Save email if provided, otherwise null
-        timestamp: new Date(),
-        userAgent: navigator.userAgent,
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: feedback.trim(),
+          email: email.trim() || null,
+        }),
       })
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error || "Failed to send feedback")
+      }
+
       setIsSuccess(true)
       setFeedback("")
       setEmail("")
@@ -46,34 +50,24 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
       }, 2000)
     } catch (err) {
       console.error("Error adding feedback: ", err)
-      setError("Failed to send feedback. Please try again.")
+      setError(err instanceof Error ? err.message : "Failed to send feedback. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="feedback-dialog-title"
-    >
-      <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-0 shadow-lg animate-in fade-in zoom-in-95 duration-200">
+    <Modal open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 p-4">
-          <h3 id="feedback-dialog-title" className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
+          <ModalTitle className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
             <MessageSquare className="h-5 w-5 shrink-0 text-primary" />
             <span className="truncate">Send Feedback</span>
-          </h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="h-8 w-8 shrink-0 p-0"
-            aria-label="Close feedback dialog"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          </ModalTitle>
+          <ModalClose asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" aria-label="Close feedback dialog">
+              <X className="h-4 w-4" />
+            </Button>
+          </ModalClose>
         </div>
 
         <div className="space-y-4 p-4 sm:p-6">
@@ -92,15 +86,17 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
             </div>
           ) : (
             <form className="space-y-4" onSubmit={handleSubmit}>
-              <p className="text-sm text-muted-foreground">
-                We'd love to hear your thoughts, suggestions, or report any issues.
-              </p>
+              <ModalDescription className="text-sm text-muted-foreground">
+                We&apos;d love to hear your thoughts, suggestions, or report any issues.
+              </ModalDescription>
               <div className="space-y-3">
                 <Textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Tell us what you think..."
                   className="min-h-[100px]"
+                  maxLength={4000}
+                  aria-label="Feedback"
                   required
                 />
                 <Input
@@ -108,6 +104,8 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email (optional)"
+                  maxLength={254}
+                  aria-label="Email (optional)"
                 />
               </div>
               {error && <p className="text-xs text-destructive">{error}</p>}
@@ -135,7 +133,6 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
             Your feedback helps us improve NerdsNote.
           </p>
         </div>
-      </Card>
-    </div>
+    </Modal>
   )
 }

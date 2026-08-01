@@ -11,6 +11,7 @@ import {
     siteUrl,
     websiteJsonLd,
 } from "@/lib/structured-data"
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration"
 import "./globals.css"
 
 const structuredData = [organizationJsonLd, websiteJsonLd]
@@ -125,6 +126,7 @@ export default function RootLayout({
             </head>
             <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
                 {children}
+                <ServiceWorkerRegistration />
                 <Analytics />
                 <SpeedInsights />
             </body>

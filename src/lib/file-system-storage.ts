@@ -1,18 +1,16 @@
 
 import { get, set, del } from 'idb-keyval';
-import { normalizeNoteContent } from '@/lib/note-content';
-
-export interface Note {
-    id: string;
-    title: string;
-    content: string;
-    lastModified: Date;
-}
+import { richTextToPlainText } from '@/lib/note-content';
+import type { Note } from '@/lib/note-storage';
 
 const DIRECTORY_HANDLE_KEY = 'nerds-note-directory-handle';
 
 export class FileSystemStorage {
     private directoryHandle: FileSystemDirectoryHandle | null = null;
+
+    // File writes, renames, reads, and deletes all mutate shared filename state.
+    // Serialize them so rapid title edits or deletes cannot race each other.
+    private operationQueue: Promise<void> = Promise.resolve();
 
     // Track currently managed filenames to help with sync
     private managedFiles: Set<string> = new Set();
@@ -21,6 +19,19 @@ export class FileSystemStorage {
     // and delete the correct file even when two notes share a title, instead of
     // resolving the filename from the (non-unique) title every time.
     private fileNames: Map<string, string> = new Map();
+
+    private enqueueOperation<T>(operation: () => Promise<T>): Promise<T> {
+        const queued = this.operationQueue
+            .catch(() => undefined)
+            .then(operation);
+
+        this.operationQueue = queued.then(
+            () => undefined,
+            () => undefined,
+        );
+
+        return queued;
+    }
 
     /**
      * Checks if the File System Access API is supported in this browser.
@@ -57,6 +68,9 @@ export class FileSystemStorage {
                 mode: 'readwrite',
                 id: 'nerds-note-storage', // remembers the directory preference
             });
+
+            // Finish operations against the old folder before swapping handles.
+            await this.operationQueue;
             this.directoryHandle = handle;
             await set(DIRECTORY_HANDLE_KEY, handle);
         } catch (error) {
@@ -71,6 +85,7 @@ export class FileSystemStorage {
      * Disconnects the current directory handle.
      */
     async disconnectDirectory(): Promise<void> {
+        await this.operationQueue;
         this.directoryHandle = null;
         this.managedFiles.clear();
         this.fileNames.clear();
@@ -204,11 +219,15 @@ export class FileSystemStorage {
      * and same-title collisions internally via the id -> filename map.
      */
     async saveNote(note: Note): Promise<void> {
+        return this.enqueueOperation(() => this.saveNoteImmediately(note));
+    }
+
+    private async saveNoteImmediately(note: Note): Promise<void> {
         if (!this.directoryHandle) throw new Error('No directory connected');
 
         const filename = await this.resolveFilename(note);
         const previous = this.fileNames.get(note.id);
-        const content = normalizeNoteContent(note.content);
+        const content = richTextToPlainText(note.content);
 
         try {
             const fileHandle = await this.directoryHandle.getFileHandle(filename, { create: true });
@@ -235,6 +254,10 @@ export class FileSystemStorage {
      * by saveNote, so callers only need this for actual deletions.
      */
     async deleteNote(noteId: string): Promise<void> {
+        return this.enqueueOperation(() => this.deleteNoteImmediately(noteId));
+    }
+
+    private async deleteNoteImmediately(noteId: string): Promise<void> {
         if (!this.directoryHandle) return;
 
         const filename = this.fileNames.get(noteId);
@@ -252,6 +275,10 @@ export class FileSystemStorage {
      * Loads all txt/md files from the directory as Notes.
      */
     async loadNotes(): Promise<Note[]> {
+        return this.enqueueOperation(() => this.loadNotesImmediately());
+    }
+
+    private async loadNotesImmediately(): Promise<Note[]> {
         if (!this.directoryHandle) return [];
 
         try {
@@ -259,7 +286,6 @@ export class FileSystemStorage {
             this.managedFiles.clear();
             this.fileNames.clear();
 
-            // @ts-ignore - values() iterator support varies in TS types
             for await (const entry of this.directoryHandle.values()) {
                 if (entry.kind === 'file' && (entry.name.endsWith('.txt') || entry.name.endsWith('.md'))) {
                     try {
@@ -276,7 +302,7 @@ export class FileSystemStorage {
                         notes.push({
                             id: title, // Use title as ID for file-based notes
                             title: title,
-                            content: normalizeNoteContent(text),
+                            content: text,
                             lastModified: new Date(file.lastModified)
                         });
                     } catch (err) {

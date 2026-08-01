@@ -10,7 +10,7 @@ import Link from 'next/link';
 interface SharedNoteViewProps {
     content: string;
     createdAt: string;
-    expiresAt: string | null;
+    expiresAt: string;
     openInAppUrl: string;
 }
 
@@ -22,7 +22,7 @@ export default function SharedNoteView({
 }: SharedNoteViewProps) {
     const [sanitizedContent, setSanitizedContent] = useState("");
     const createdDate = new Date(createdAt);
-    const expiresDate = expiresAt ? new Date(expiresAt) : null;
+    const expiresDate = new Date(expiresAt);
 
     // Sanitize HTML on client side
     useEffect(() => {
@@ -56,10 +56,10 @@ export default function SharedNoteView({
             {/* Header */}
             <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
                 <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
-                    <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                         <FileText className="h-6 w-6 text-primary" />
                         <h1 className="text-xl font-bold text-primary">NerdsNote</h1>
-                    </a>
+                    </Link>
                     <Button onClick={() => window.open(openInAppUrl, '_blank')} variant="outline" size="sm">
                         <ArrowUpRight className="h-4 w-4 mr-2" />
                         Save to my notes
@@ -77,9 +77,7 @@ export default function SharedNoteView({
                     </div>
                     <div className="flex items-center text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
                         <Calendar className="h-3 w-3 mr-1.5" />
-                        {expiresDate
-                            ? `Expires on ${expiresDate.toLocaleDateString()}`
-                            : "Never expires"}
+                        Expires on {expiresDate.toLocaleDateString()}
                     </div>
                 </div>
 

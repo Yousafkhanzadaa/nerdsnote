@@ -1,253 +1,125 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-    EXPIRY_SECONDS,
-    MAX_CONTENT_SIZE,
-    RATE_LIMIT_MAX,
-    SLUG_SIZE,
-} from "@/lib/share-types";
+import { NextRequest } from "next/server"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-// Mock Vercel KV
-const mockKv = {
+const { redisMock, nanoidMock } = vi.hoisted(() => ({
+  redisMock: {
     get: vi.fn(),
     set: vi.fn(),
     incr: vi.fn(),
-};
+    expire: vi.fn(),
+    del: vi.fn(),
+  },
+  nanoidMock: vi.fn((size: number) => (size === 8 ? "abc12345" : "r".repeat(size))),
+}))
 
-vi.mock("@vercel/kv", () => ({
-    kv: mockKv,
-}));
+vi.mock("@/lib/redis", () => ({ getRedis: () => redisMock }))
+vi.mock("nanoid", () => ({ nanoid: nanoidMock }))
 
-// Mock nanoid
-vi.mock("nanoid", () => ({
-    nanoid: vi.fn(() => "abc12345"),
-}));
+import { POST } from "@/app/api/share/route"
+import { DELETE } from "@/app/api/share/[slug]/route"
+import {
+  EXPIRY_SECONDS,
+  MAX_CONTENT_SIZE,
+  RATE_LIMIT_MAX,
+  SLUG_SIZE,
+} from "@/lib/share-types"
+import { hashShareRevokeToken } from "@/lib/share-token"
 
-describe("Share Types and Constants", () => {
-    it("should have correct expiry seconds for 1 day", () => {
-        expect(EXPIRY_SECONDS["1d"]).toBe(86400);
-    });
+function shareRequest(body: unknown) {
+  return new NextRequest("http://localhost/api/share", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.8" },
+    body: JSON.stringify(body),
+  })
+}
 
-    it("should have correct expiry seconds for 7 days", () => {
-        expect(EXPIRY_SECONDS["7d"]).toBe(604800);
-    });
+beforeEach(() => {
+  vi.clearAllMocks()
+  redisMock.incr.mockResolvedValue(1)
+  redisMock.expire.mockResolvedValue(1)
+  redisMock.get.mockResolvedValue(null)
+  redisMock.set.mockResolvedValue("OK")
+  redisMock.del.mockResolvedValue(1)
+})
 
-    it("should have correct expiry seconds for 30 days", () => {
-        expect(EXPIRY_SECONDS["30d"]).toBe(2592000);
-    });
+describe("share constants", () => {
+  it("uses bounded expiry options and documented limits", () => {
+    expect(EXPIRY_SECONDS).toEqual({ "1d": 86400, "7d": 604800, "30d": 2592000 })
+    expect(MAX_CONTENT_SIZE).toBe(50 * 1024)
+    expect(RATE_LIMIT_MAX).toBe(20)
+    expect(SLUG_SIZE).toBe(8)
+  })
+})
 
-    it("should have correct max content size (50KB)", () => {
-        expect(MAX_CONTENT_SIZE).toBe(50 * 1024);
-    });
+describe("POST /api/share", () => {
+  it("stores a share with a TTL and only the hash of its revocation token", async () => {
+    const response = await POST(shareRequest({ content: "<p>Safe note</p>", expiresIn: "7d" }))
+    const payload = await response.json()
 
-    it("should have correct rate limit max (20)", () => {
-        expect(RATE_LIMIT_MAX).toBe(20);
-    });
+    expect(response.status).toBe(200)
+    expect(payload).toMatchObject({
+      ok: true,
+      slug: "abc12345",
+      url: "https://nerdsnote.com/s/abc12345",
+      revokeToken: "r".repeat(32),
+    })
+    expect(redisMock.set).toHaveBeenCalledWith(
+      "note:abc12345",
+      expect.objectContaining({
+        content: "<p>Safe note</p>",
+        revokeTokenHash: hashShareRevokeToken("r".repeat(32)),
+      }),
+      { ex: EXPIRY_SECONDS["7d"] },
+    )
+    expect(JSON.stringify(redisMock.set.mock.calls[0])).not.toContain(`\"${"r".repeat(32)}\"`)
+  })
 
-    it("should have correct slug size (8)", () => {
-        expect(SLUG_SIZE).toBe(8);
-    });
-});
+  it("rejects permanent links and non-string content before storage", async () => {
+    const permanent = await POST(shareRequest({ content: "note", expiresIn: "never" }))
+    const malformed = await POST(shareRequest({ content: 42, expiresIn: "7d" }))
 
-describe("Content Validation", () => {
-    it("should detect empty content", () => {
-        const content: string = "";
-        const isEmpty = !content || content.trim().length === 0;
-        expect(isEmpty).toBe(true);
-    });
+    expect(permanent.status).toBe(400)
+    expect(malformed.status).toBe(400)
+    expect(redisMock.set).not.toHaveBeenCalled()
+  })
 
-    it("should detect whitespace-only content as empty", () => {
-        const content = "   \n\t  ";
-        const isEmpty = !content || content.trim().length === 0;
-        expect(isEmpty).toBe(true);
-    });
+  it("returns 429 after the fixed-window limit", async () => {
+    redisMock.incr.mockResolvedValue(RATE_LIMIT_MAX + 1)
+    const response = await POST(shareRequest({ content: "note", expiresIn: "1d" }))
 
-    it("should accept valid content", () => {
-        const content = "Hello, world!";
-        const isEmpty = !content || content.trim().length === 0;
-        expect(isEmpty).toBe(false);
-    });
+    expect(response.status).toBe(429)
+    expect(redisMock.get).not.toHaveBeenCalled()
+  })
+})
 
-    it("should detect content exceeding 50KB", () => {
-        const content = "a".repeat(MAX_CONTENT_SIZE + 1);
-        const contentSize = new TextEncoder().encode(content).length;
-        expect(contentSize).toBeGreaterThan(MAX_CONTENT_SIZE);
-    });
+describe("DELETE /api/share/[slug]", () => {
+  it("revokes a share only with its secret token", async () => {
+    const revokeToken = "secret-revocation-token-123456"
+    redisMock.get.mockResolvedValue({
+      content: "note",
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 1000).toISOString(),
+      revokeTokenHash: hashShareRevokeToken(revokeToken),
+    })
+    const request = new NextRequest("http://localhost/api/share/abc12345", {
+      method: "DELETE",
+      body: JSON.stringify({ revokeToken }),
+    })
+    const response = await DELETE(request, { params: Promise.resolve({ slug: "abc12345" }) })
 
-    it("should accept content within 50KB limit", () => {
-        const content = "a".repeat(MAX_CONTENT_SIZE);
-        const contentSize = new TextEncoder().encode(content).length;
-        expect(contentSize).toBeLessThanOrEqual(MAX_CONTENT_SIZE);
-    });
-});
+    expect(response.status).toBe(200)
+    expect(redisMock.del).toHaveBeenCalledWith("note:abc12345")
+  })
 
-describe("Expiry Calculation", () => {
-    it("should calculate correct expiry date for 1 day", () => {
-        const now = new Date("2026-02-06T18:00:00Z");
-        const expiresAt = new Date(now.getTime() + EXPIRY_SECONDS["1d"] * 1000);
-        expect(expiresAt.toISOString()).toBe("2026-02-07T18:00:00.000Z");
-    });
+  it("does not delete when the token is wrong", async () => {
+    redisMock.get.mockResolvedValue({ revokeTokenHash: hashShareRevokeToken("different-secret-token-123") })
+    const request = new NextRequest("http://localhost/api/share/abc12345", {
+      method: "DELETE",
+      body: JSON.stringify({ revokeToken: "wrong-revocation-token-123" }),
+    })
+    const response = await DELETE(request, { params: Promise.resolve({ slug: "abc12345" }) })
 
-    it("should calculate correct expiry date for 7 days", () => {
-        const now = new Date("2026-02-06T18:00:00Z");
-        const expiresAt = new Date(now.getTime() + EXPIRY_SECONDS["7d"] * 1000);
-        expect(expiresAt.toISOString()).toBe("2026-02-13T18:00:00.000Z");
-    });
-
-    it("should calculate correct expiry date for 30 days", () => {
-        const now = new Date("2026-02-06T18:00:00Z");
-        const expiresAt = new Date(now.getTime() + EXPIRY_SECONDS["30d"] * 1000);
-        expect(expiresAt.toISOString()).toBe("2026-03-08T18:00:00.000Z");
-    });
-
-    it('should return null for "never" expiry', () => {
-        const expiresIn = "never";
-        const expiresAt = expiresIn === "never" ? null : new Date();
-        expect(expiresAt).toBeNull();
-    });
-});
-
-describe("Rate Limiting Logic", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    it("should allow first request", async () => {
-        mockKv.get.mockResolvedValue(null);
-        mockKv.set.mockResolvedValue("OK");
-
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
-
-        expect(withinLimit).toBe(true);
-    });
-
-    it("should allow requests below limit", async () => {
-        mockKv.get.mockResolvedValue(19);
-
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
-
-        expect(withinLimit).toBe(true);
-    });
-
-    it("should block requests at limit", async () => {
-        mockKv.get.mockResolvedValue(20);
-
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
-
-        expect(withinLimit).toBe(false);
-    });
-
-    it("should block requests above limit", async () => {
-        mockKv.get.mockResolvedValue(25);
-
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
-
-        expect(withinLimit).toBe(false);
-    });
-});
-
-describe("Slug Generation", () => {
-    it("should generate slug of correct length", async () => {
-        const { nanoid } = await import("nanoid");
-        const slug = nanoid(SLUG_SIZE);
-        expect(slug).toBe("abc12345");
-        expect(slug.length).toBe(8);
-    });
-});
-
-describe("KV Storage", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    it("should store note with TTL for 7d expiry", async () => {
-        mockKv.set.mockResolvedValue("OK");
-
-        const noteData = {
-            content: "Test note",
-            createdAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + EXPIRY_SECONDS["7d"] * 1000).toISOString(),
-        };
-
-        await mockKv.set("note:abc12345", noteData, { ex: EXPIRY_SECONDS["7d"] });
-
-        expect(mockKv.set).toHaveBeenCalledWith(
-            "note:abc12345",
-            noteData,
-            { ex: 604800 }
-        );
-    });
-
-    it("should store note without TTL for never expiry", async () => {
-        mockKv.set.mockResolvedValue("OK");
-
-        const noteData = {
-            content: "Test note",
-            createdAt: new Date().toISOString(),
-            expiresAt: null,
-        };
-
-        await mockKv.set("note:abc12345", noteData);
-
-        expect(mockKv.set).toHaveBeenCalledWith("note:abc12345", noteData);
-    });
-
-    it("should return null for non-existent note", async () => {
-        mockKv.get.mockResolvedValue(null);
-
-        const note = await mockKv.get("note:nonexistent");
-
-        expect(note).toBeNull();
-    });
-
-    it("should return note data for existing note", async () => {
-        const noteData = {
-            content: "Test note",
-            createdAt: "2026-02-06T18:00:00.000Z",
-            expiresAt: "2026-02-13T18:00:00.000Z",
-        };
-        mockKv.get.mockResolvedValue(noteData);
-
-        const note = await mockKv.get("note:abc12345");
-
-        expect(note).toEqual(noteData);
-    });
-});
-
-describe("HTML Escaping for XSS Prevention", () => {
-    function escapeHtml(text: string): string {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    it("should escape < and > characters", () => {
-        const input = "<script>alert('xss')</script>";
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("&lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;");
-    });
-
-    it("should escape & character", () => {
-        const input = "a & b";
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("a &amp; b");
-    });
-
-    it("should escape quotes", () => {
-        const input = 'He said "hello"';
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("He said &quot;hello&quot;");
-    });
-
-    it("should preserve normal text", () => {
-        const input = "Hello, world!";
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("Hello, world!");
-    });
-});
+    expect(response.status).toBe(403)
+    expect(redisMock.del).not.toHaveBeenCalled()
+  })
+})

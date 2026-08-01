@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/notepad",
     name: "NerdsNote - Free Online Notepad",
     short_name: "NerdsNote",
     description:

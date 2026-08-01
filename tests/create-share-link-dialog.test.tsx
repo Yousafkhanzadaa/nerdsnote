@@ -29,8 +29,10 @@ describe("share link QR code", () => {
         ok: true,
         status: 200,
         json: async () => ({
+          slug: "test-link",
           url: shareUrl,
           expiresAt: "2026-08-01T00:00:00.000Z",
+          revokeToken: "test-revocation-token-123456789",
         }),
       }),
     )
@@ -93,8 +95,10 @@ describe("share link QR code", () => {
         ok: true,
         status: 200,
         json: async () => ({
+          slug: "share-both",
           url: shareUrl,
           expiresAt: "2026-08-01T00:00:00.000Z",
+          revokeToken: "test-revocation-token-123456789",
         }),
       }),
     )

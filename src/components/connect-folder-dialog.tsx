@@ -1,6 +1,6 @@
 import React from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Modal, ModalClose, ModalDescription, ModalTitle } from "@/components/ui/modal"
 import { HardDrive, ShieldCheck, FolderHeart, ArrowRight, X } from "lucide-react"
 
 interface ConnectFolderDialogProps {
@@ -10,25 +10,24 @@ interface ConnectFolderDialogProps {
 }
 
 export function ConnectFolderDialog({ isOpen, onClose, onConfirm }: ConnectFolderDialogProps) {
-    if (!isOpen) return null
-
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-0 shadow-lg animate-in fade-in zoom-in-95 duration-200">
+        <Modal open={isOpen} onOpenChange={(open) => !open && onClose()}>
                 <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 p-4">
-                    <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
+                    <ModalTitle className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
                         <FolderHeart className="h-5 w-5 shrink-0 text-primary" />
                         <span className="truncate">Connect Local Folder</span>
-                    </h3>
-                    <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 shrink-0 p-0">
-                        <X className="h-4 w-4" />
-                    </Button>
+                    </ModalTitle>
+                    <ModalClose asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0" aria-label="Close folder dialog">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </ModalClose>
                 </div>
 
                 <div className="space-y-5 p-4 sm:space-y-6 sm:p-6">
-                    <p className="text-center text-muted-foreground text-sm">
-                        Sync your notes directly to your device for 100% ownership and offline access.
-                    </p>
+                    <ModalDescription className="text-center text-muted-foreground text-sm">
+                        Sync notes to your device for offline access. Rich formatting is flattened when saved as plain text.
+                    </ModalDescription>
 
                     <div className="space-y-3">
                         <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border/40">
@@ -46,7 +45,7 @@ export function ConnectFolderDialog({ isOpen, onClose, onConfirm }: ConnectFolde
                             <div className="space-y-1">
                                 <h4 className="font-medium text-sm">No Data Loss</h4>
                                 <p className="text-xs text-muted-foreground">
-                                    Browser cache can be cleared properly. Saving to a real folder ensures your notes persist forever.
+                                    Browser storage can be cleared. A connected folder gives you an independent plain-text copy.
                                 </p>
                             </div>
                         </div>
@@ -64,7 +63,6 @@ export function ConnectFolderDialog({ isOpen, onClose, onConfirm }: ConnectFolde
                         </Button>
                     </div>
                 </div>
-            </Card>
-        </div>
+        </Modal>
     )
 }

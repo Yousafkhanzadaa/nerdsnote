@@ -1,4 +1,3 @@
-import { kv } from "@vercel/kv";
 import { nanoid } from "nanoid";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -12,41 +11,20 @@ import {
     RATE_LIMIT_WINDOW,
     SLUG_SIZE,
     MAX_SLUG_RETRIES,
+    REVOKE_TOKEN_SIZE,
+    isExpiryOption,
 } from "@/lib/share-types";
-
-// Get client IP from request headers
-function getClientIP(request: NextRequest): string {
-    const forwardedFor = request.headers.get("x-forwarded-for");
-    if (forwardedFor) {
-        return forwardedFor.split(",")[0].trim();
-    }
-    const realIP = request.headers.get("x-real-ip");
-    if (realIP) {
-        return realIP;
-    }
-    return "unknown";
-}
-
-// Check rate limit for IP
-async function checkRateLimit(ip: string): Promise<boolean> {
-    const key = `rate:share:${ip}`;
-
-    // Atomic increment so concurrent requests can't slip past the cap.
-    const current = await kv.incr(key);
-
-    // Start the fixed window on the first request in it.
-    if (current === 1) {
-        await kv.expire(key, RATE_LIMIT_WINDOW);
-    }
-
-    return current <= RATE_LIMIT_MAX;
-}
+import { getRedis } from "@/lib/redis";
+import { getClientIP } from "@/lib/request-ip";
+import { withinFixedWindowRateLimit } from "@/lib/rate-limit";
+import { hashShareRevokeToken } from "@/lib/share-token";
 
 // Generate unique slug with retry on collision
 async function generateUniqueSlug(): Promise<string | null> {
+    const redis = getRedis();
     for (let i = 0; i < MAX_SLUG_RETRIES; i++) {
         const slug = nanoid(SLUG_SIZE);
-        const existing = await kv.get(`note:${slug}`);
+        const existing = await redis.get(`note:${slug}`);
         if (existing === null) {
             return slug;
         }
@@ -69,8 +47,15 @@ export async function POST(request: NextRequest) {
 
         const { content, expiresIn = "7d" } = body;
 
+        if (!isExpiryOption(expiresIn)) {
+            return NextResponse.json<ShareNoteError>(
+                { ok: false, error: "Expiry must be 1 day, 7 days, or 30 days", code: "INVALID_EXPIRY" },
+                { status: 400 }
+            );
+        }
+
         // Validate content is not empty
-        if (!content || content.trim().length === 0) {
+        if (typeof content !== "string" || content.trim().length === 0) {
             return NextResponse.json<ShareNoteError>(
                 { ok: false, error: "Content cannot be empty", code: "EMPTY_CONTENT" },
                 { status: 400 }
@@ -92,7 +77,11 @@ export async function POST(request: NextRequest) {
 
         // Check rate limit
         const clientIP = getClientIP(request);
-        const withinLimit = await checkRateLimit(clientIP);
+        const withinLimit = await withinFixedWindowRateLimit(
+            `rate:share:${clientIP}`,
+            RATE_LIMIT_MAX,
+            RATE_LIMIT_WINDOW,
+        );
         if (!withinLimit) {
             return NextResponse.json<ShareNoteError>(
                 {
@@ -119,26 +108,19 @@ export async function POST(request: NextRequest) {
 
         // Calculate expiry
         const now = new Date();
-        let expiresAt: Date | null = null;
-        let ttlSeconds: number | undefined;
-
-        if (expiresIn !== "never") {
-            ttlSeconds = EXPIRY_SECONDS[expiresIn];
-            expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
-        }
+        const ttlSeconds = EXPIRY_SECONDS[expiresIn];
+        const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
+        const revokeToken = nanoid(REVOKE_TOKEN_SIZE);
 
         // Store note in KV
         const noteData: StoredNote = {
             content,
             createdAt: now.toISOString(),
-            expiresAt: expiresAt?.toISOString() ?? null,
+            expiresAt: expiresAt.toISOString(),
+            revokeTokenHash: hashShareRevokeToken(revokeToken),
         };
 
-        if (ttlSeconds) {
-            await kv.set(`note:${slug}`, noteData, { ex: ttlSeconds });
-        } else {
-            await kv.set(`note:${slug}`, noteData);
-        }
+        await getRedis().set(`note:${slug}`, noteData, { ex: ttlSeconds });
 
         // Generate URL
         const host = process.env.NEXT_PUBLIC_APP_URL || "https://nerdsnote.com";
@@ -151,7 +133,8 @@ export async function POST(request: NextRequest) {
             ok: true,
             url,
             slug,
-            expiresAt: expiresAt?.toISOString() ?? null,
+            expiresAt: expiresAt.toISOString(),
+            revokeToken,
         });
     } catch (error) {
         console.error("[share] Error creating share link:", error);

@@ -2,9 +2,11 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
+import dynamic from "next/dynamic"
 import { Card } from "@/components/ui/card"
+import { Modal, ModalDescription, ModalTitle } from "@/components/ui/modal"
 import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, FolderOpen, HardDrive } from "lucide-react"
+import { Archive, Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, FolderOpen, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
@@ -14,21 +16,29 @@ import { Highlight } from "@tiptap/extension-highlight"
 import { TableKit } from "@tiptap/extension-table"
 import { EditorToolbar } from "@/components/editor-toolbar"
 
-import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
-import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
 import { consumeLandingDraftHandoff, landingDraftTitle } from "@/lib/landing-draft"
 import { normalizeNoteContent, notePreviewText, richTextToPlainText } from "@/lib/note-content"
+import {
+  createBackup,
+  loadBrowserNotes,
+  parseBackup,
+  persistBrowserNotes,
+  type Note,
+} from "@/lib/note-storage"
 import { ParagraphIndent } from "@/lib/tiptap/paragraph-indent"
 
-interface Note {
-  id: string
-  title: string
-  content: string
-  lastModified: Date
-}
+const CreateShareLinkDialog = dynamic(
+  () => import("@/components/create-share-link-dialog").then((module) => module.CreateShareLinkDialog),
+  { ssr: false },
+)
+
+const FeedbackDialog = dynamic(
+  () => import("@/components/feedback-dialog").then((module) => module.FeedbackDialog),
+  { ssr: false },
+)
 
 const DEFAULT_FONT_SIZE = 16
 const MIN_FONT_SIZE = 12
@@ -65,6 +75,9 @@ export default function NotepadClient() {
   const [folderSyncNotice, setFolderSyncNotice] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
   const [isStorageReady, setIsStorageReady] = useState(false)
+  const [isBrowserStorageHydrated, setIsBrowserStorageHydrated] = useState(false)
+  const [backupNotice, setBackupNotice] = useState<string | null>(null)
+  const [editorStats, setEditorStats] = useState({ words: 0, characters: 0 })
 
   // File System Storage State
   const [isFileSystemSupported, setIsFileSystemSupported] = useState(false)
@@ -72,6 +85,12 @@ export default function NotepadClient() {
   // Per-note debounce timers for folder saves, so editing note A then quickly
   // switching to note B never drops A's pending save.
   const saveTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const browserSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const notesRef = useRef(notes)
+
+  useEffect(() => {
+    notesRef.current = notes
+  }, [notes])
 
   const clearFolderSaveTimers = () => {
     for (const timeout of saveTimeoutsRef.current.values()) {
@@ -81,36 +100,29 @@ export default function NotepadClient() {
   }
 
   const loadLocalStorageNotes = () => {
-    const savedNotes = localStorage.getItem("nerds-note-data")
-
-    if (savedNotes) {
-      let parsedNotes: Note[]
-      try {
-        parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
-          ...note,
-          content: normalizeNoteContent(note.content),
-          lastModified: new Date(note.lastModified),
-        }))
-      } catch (error) {
-        // Corrupt data shouldn't blank the app — start fresh and let the next
-        // save overwrite the bad value.
-        console.error("Failed to parse saved notes:", error)
+    try {
+      const parsedNotes = loadBrowserNotes(localStorage)
+      if (parsedNotes === null) {
         setNotes([])
         setActiveNoteId(null)
-        return null
+        return false
       }
+
       setNotes(parsedNotes)
       if (parsedNotes.length > 0) {
         setActiveNoteId(parsedNotes[0].id)
       } else {
         setActiveNoteId(null)
       }
-      return savedNotes
+      return true
+    } catch (error) {
+      // Corrupt or structurally invalid data should not crash the editor.
+      console.error("Failed to parse saved notes:", error)
+      setNotes([])
+      setActiveNoteId(null)
+      setStorageError("Saved browser notes were unreadable. Import a backup to restore them.")
+      return false
     }
-
-    setNotes([])
-    setActiveNoteId(null)
-    return null
   }
 
   const isFileSystemPermissionError = (error: unknown) =>
@@ -233,19 +245,26 @@ export default function NotepadClient() {
     editorProps: {
       attributes: {
         class: "note-rich-content prose dark:prose-invert focus:outline-none max-w-none h-full min-h-[50vh] px-4 py-2",
+        role: "textbox",
+        "aria-label": "Note content",
+        "aria-multiline": "true",
       },
     },
     onUpdate: ({ editor }) => {
       if (activeNoteId) {
         updateNote(activeNoteId, { content: editor.getHTML() })
       }
+      setEditorStats({
+        words: editor.storage.characterCount?.words() || 0,
+        characters: editor.storage.characterCount?.characters() || 0,
+      })
     },
   })
 
   // Load notes from localStorage on mount
   useEffect(() => {
-    const savedNotes = loadLocalStorageNotes()
-    if (!savedNotes) {
+    const hadSavedNotes = loadLocalStorageNotes()
+    if (!hadSavedNotes) {
       // Create initial note
       const initialNote: Note = {
         id: "1",
@@ -259,7 +278,7 @@ export default function NotepadClient() {
 
     // Check if user has seen the new features announcement
     const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-v6-features")
-    if (savedNotes && !hasSeenAnnouncement) {
+    if (hadSavedNotes && !hasSeenAnnouncement) {
       // Only show to existing users (who have saved notes)
       setShowAnnouncement(true)
     }
@@ -275,6 +294,8 @@ export default function NotepadClient() {
     if (savedFontSize !== null) {
       setFontSize(savedFontSize)
     }
+
+    setIsBrowserStorageHydrated(true)
 
     // Handle openShared URL parameter to import shared notes
     const urlParams = new URLSearchParams(window.location.search)
@@ -344,6 +365,8 @@ export default function NotepadClient() {
     }
 
     void initializeFileSystem()
+    // Folder initialization must only run once; permission loss is handled inside the workflow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Move an explicitly continued landing-page draft into a real note only
@@ -398,9 +421,7 @@ export default function NotepadClient() {
       // Reload from FS to ensure consistency
       const fsNotes = await fileSystemStorage.loadNotes()
       setNotes(fsNotes)
-      if (fsNotes.length > 0 && !activeNoteId) {
-        setActiveNoteId(fsNotes[0].id)
-      }
+      setActiveNoteId(fsNotes[0]?.id ?? null)
     } catch (error) {
       console.error("Failed to connect directory:", error)
       if (isFileSystemPermissionError(error)) {
@@ -410,6 +431,7 @@ export default function NotepadClient() {
   }
 
   const handleDisconnectDirectory = async () => {
+    clearFolderSaveTimers()
     await fileSystemStorage.disconnectDirectory()
     setConnectedDirectoryName(null)
     setFolderSyncNotice(null)
@@ -417,25 +439,57 @@ export default function NotepadClient() {
     loadLocalStorageNotes()
   }
 
-  // Save notes to localStorage whenever notes change
+  const persistNotesToBrowser = (notesToPersist: readonly Note[]) => {
+    try {
+      persistBrowserNotes(localStorage, notesToPersist)
+      setStorageError(null)
+    } catch (error) {
+      console.error("Failed to save notes to browser storage:", error)
+      setStorageError(
+        "Browser storage is full — recent changes may not be saved. Download a backup or connect a local folder.",
+      )
+    }
+  }
+
+  // Debounce whole-notebook serialization while preserving an explicit empty
+  // array, so deleting the final note remains deleted after a reload.
   useEffect(() => {
-    if (notes.length > 0) {
-      try {
-        localStorage.setItem("nerds-note-data", JSON.stringify(notes))
-        setStorageError(null)
-      } catch (error) {
-        // Most likely QuotaExceededError. Surface it instead of failing silently.
-        console.error("Failed to save notes to browser storage:", error)
-        setStorageError(
-          "Browser storage is full — recent changes may not be saved. Export important notes or connect a local folder.",
-        )
+    if (!isBrowserStorageHydrated) return
+
+    if (browserSaveTimeoutRef.current) {
+      clearTimeout(browserSaveTimeoutRef.current)
+    }
+
+    browserSaveTimeoutRef.current = setTimeout(() => {
+      browserSaveTimeoutRef.current = null
+      persistNotesToBrowser(notes)
+    }, 200)
+
+    return () => {
+      if (browserSaveTimeoutRef.current) {
+        clearTimeout(browserSaveTimeoutRef.current)
+        browserSaveTimeoutRef.current = null
       }
     }
-  }, [notes])
+  }, [notes, isBrowserStorageHydrated])
+
+  useEffect(() => {
+    if (!isBrowserStorageHydrated) return
+
+    const flushBrowserNotes = () => persistNotesToBrowser(notesRef.current)
+    window.addEventListener("pagehide", flushBrowserNotes)
+
+    return () => {
+      window.removeEventListener("pagehide", flushBrowserNotes)
+    }
+  }, [isBrowserStorageHydrated])
 
   useEffect(() => {
     return () => {
       clearFolderSaveTimers()
+      if (browserSaveTimeoutRef.current) {
+        clearTimeout(browserSaveTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -466,7 +520,14 @@ export default function NotepadClient() {
           preserveWhitespace: "full",
         },
       })
+      setEditorStats({
+        words: editor.storage.characterCount?.words() || 0,
+        characters: editor.storage.characterCount?.characters() || 0,
+      })
       prevActiveNoteIdRef.current = activeNote.id
+    } else if (!activeNote) {
+      setEditorStats({ words: 0, characters: 0 })
+      prevActiveNoteIdRef.current = null
     }
   }, [activeNoteId, activeNote, editor])
 
@@ -493,14 +554,13 @@ export default function NotepadClient() {
 
         // Sync to File System
         if (connectedDirectoryName) {
-          // Check for rename
-          if (typeof updates.title === "string" && updates.title !== note.title) {
-            // saveNote moves the underlying file and cleans up the old one,
-            // so a rename is just an immediate save.
-            void saveNoteToDirectory(updatedNote, false)
-          } else if (Object.prototype.hasOwnProperty.call(updates, "content")) {
-            // Debounce content saves, keyed per note so switching notes mid-edit
-            // doesn't drop a pending save.
+          if (
+            (typeof updates.title === "string" && updates.title !== note.title) ||
+            Object.prototype.hasOwnProperty.call(updates, "content")
+          ) {
+            // Title and content changes share a per-note debounce. The storage
+            // layer also serializes operations, giving the latest rename a
+            // deterministic last-write-wins order.
             scheduleFolderSave(updatedNote)
           }
         }
@@ -512,6 +572,12 @@ export default function NotepadClient() {
   }
 
   const deleteNote = (id: string) => {
+    const pendingSave = saveTimeoutsRef.current.get(id)
+    if (pendingSave) {
+      clearTimeout(pendingSave)
+      saveTimeoutsRef.current.delete(id)
+    }
+
     if (connectedDirectoryName) {
       void deleteNoteFromDirectory(id)
     }
@@ -535,18 +601,64 @@ export default function NotepadClient() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `${activeNote.title}.txt`
+    const safeTitle = activeNote.title.replace(/[\\/:*?"<>|]/g, "-").trim() || "Untitled Note"
+    a.download = `${safeTitle}.txt`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const exportBackup = () => {
+    const backup = createBackup(notes)
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {
+      type: "application/json",
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `nerdsnote-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setBackupNotice(`Downloaded a backup of ${notes.length} ${notes.length === 1 ? "note" : "notes"}.`)
   }
 
   const importFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
+    const fileInput = event.currentTarget
 
     const reader = new FileReader()
     reader.onload = (e) => {
       const content = e.target?.result as string
+
+      if (file.name.toLowerCase().endsWith(".json")) {
+        try {
+          const restoredNotes = parseBackup(content)
+          const importedAt = Date.now()
+          const restoredWithUniqueIds = restoredNotes.map((note, index) => ({
+            ...note,
+            id: `backup-${importedAt}-${index}`,
+          }))
+
+          setNotes((previousNotes) => [...restoredWithUniqueIds, ...previousNotes])
+          setActiveNoteId(restoredWithUniqueIds[0]?.id ?? activeNoteId)
+          setBackupNotice(
+            `Imported ${restoredWithUniqueIds.length} ${restoredWithUniqueIds.length === 1 ? "note" : "notes"} from backup.`,
+          )
+
+          if (connectedDirectoryName) {
+            for (const note of restoredWithUniqueIds) {
+              void saveNoteToDirectory(note, true)
+            }
+          }
+        } catch (error) {
+          console.error("Failed to import NerdsNote backup:", error)
+          setBackupNotice("That file is not a valid NerdsNote backup.")
+        } finally {
+          fileInput.value = ""
+        }
+        return
+      }
+
       const newNote: Note = {
         id: Date.now().toString(),
         title: file.name.replace(/\.[^/.]+$/, ""),
@@ -559,6 +671,8 @@ export default function NotepadClient() {
       if (connectedDirectoryName) {
         void saveNoteToDirectory(newNote, true)
       }
+      setBackupNotice(`Imported ${file.name}.`)
+      fileInput.value = ""
     }
     reader.readAsText(file)
   }
@@ -597,6 +711,8 @@ export default function NotepadClient() {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
+    // The shortcut listener is intentionally refreshed with the active editor state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNote, editor])
 
   return (
@@ -739,6 +855,7 @@ export default function NotepadClient() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsMobileSidebarOpen(false)}
+                  aria-label="Close notes sidebar"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -763,16 +880,39 @@ export default function NotepadClient() {
                   <Plus className="h-4 w-4 mr-2" />
                   New Note
                 </Button>
-                <Button variant="outline" size="sm" onClick={exportNote} disabled={!activeNote}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportNote}
+                  disabled={!activeNote}
+                  aria-label="Export current note"
+                  title="Export current note"
+                >
                   <Download className="h-4 w-4" />
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportBackup}
+                  disabled={notes.length === 0}
+                  aria-label="Download all-notes backup"
+                  title="Download all-notes backup"
+                >
+                  <Archive className="h-4 w-4" />
+                </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <label>
+                  <label aria-label="Import note or backup" title="Import note or backup">
                     <Upload className="h-4 w-4" />
-                    <input type="file" accept=".txt,.md" onChange={importFile} className="hidden" />
+                    <input type="file" accept=".txt,.md,.json" onChange={importFile} className="hidden" />
                   </label>
                 </Button>
               </div>
+
+              {backupNotice && (
+                <p role="status" className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  {backupNotice}
+                </p>
+              )}
 
               {isFileSystemSupported && (
                 <Card
@@ -857,22 +997,26 @@ export default function NotepadClient() {
                     <Card
                       key={note.id}
                       className={cn(
-                        "group p-3 cursor-pointer transition-colors hover:bg-accent/50",
+                        "group p-0 transition-colors hover:bg-accent/50",
                         activeNoteId === note.id && "bg-accent text-accent-foreground",
                       )}
-                      onClick={() => {
-                        setActiveNoteId(note.id)
-                        setIsMobileSidebarOpen(false)
-                      }}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between p-3">
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          onClick={() => {
+                            setActiveNoteId(note.id)
+                            setIsMobileSidebarOpen(false)
+                          }}
+                          aria-current={activeNoteId === note.id ? "true" : undefined}
+                        >
                           <h3 className="font-medium truncate text-sm">{note.title}</h3>
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {notePreviewText(note.content) || "Empty note"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">{note.lastModified.toLocaleDateString()}</p>
-                        </div>
+                        </button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -880,7 +1024,7 @@ export default function NotepadClient() {
                             e.stopPropagation()
                             setNoteToDelete(note.id)
                           }}
-                          className="ml-2 h-7 w-7 shrink-0 p-0 opacity-100 hover:bg-destructive hover:text-destructive-foreground sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
+                          className="ml-2 h-8 w-8 shrink-0 p-0 opacity-100 hover:bg-destructive hover:text-destructive-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                           aria-label={`Delete ${note.title}`}
                         >
                           <Trash2 className="h-3 w-3" />
@@ -908,6 +1052,7 @@ export default function NotepadClient() {
                       onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
                       className="border-none bg-transparent p-0 text-base font-medium focus-visible:ring-0 sm:text-lg"
                       placeholder="Note title..."
+                      aria-label="Note title"
                     />
                   </div>
                 )}
@@ -984,8 +1129,8 @@ export default function NotepadClient() {
           {activeNote && editor && (
             <footer className="flex shrink-0 flex-col gap-1 border-t border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-4">
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <span>Words: {editor.storage.characterCount?.words() || 0}</span>
-                <span>Characters: {editor.storage.characterCount?.characters() || 0}</span>
+                <span>Words: {editorStats.words}</span>
+                <span>Characters: {editorStats.characters}</span>
               </div>
               <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 sm:justify-end">
                 {storageError && (
@@ -1023,12 +1168,11 @@ export default function NotepadClient() {
       {/* Delete Confirmation Dialog */}
       {
         noteToDelete && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-5 sm:p-6">
-              <h3 className="text-lg font-semibold mb-2">Delete Note</h3>
-              <p className="text-muted-foreground mb-4">
+          <Modal open onOpenChange={(open) => !open && setNoteToDelete(null)} className="p-5 sm:p-6">
+              <ModalTitle className="text-lg font-semibold mb-2">Delete Note</ModalTitle>
+              <ModalDescription className="text-muted-foreground mb-4">
                 Are you sure you want to delete this note? This action cannot be undone.
-              </p>
+              </ModalDescription>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
@@ -1046,25 +1190,23 @@ export default function NotepadClient() {
                   Delete
                 </Button>
               </div>
-            </Card>
-          </div>
+          </Modal>
         )
       }
 
       {/* Feature Announcement Modal */}
       {
         showAnnouncement && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-5 animate-in fade-in zoom-in-95 duration-200 sm:p-6">
+          <Modal open onOpenChange={(open) => !open && setShowAnnouncement(false)} className="p-5 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Sparkles className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold">New Features: Share & Save!</h3>
+                <ModalTitle className="text-lg font-semibold">New Features: Share & Save!</ModalTitle>
               </div>
-              <p className="text-sm text-muted-foreground mb-6">
-                We've added powerful new features to give you full control over your data.
-              </p>
+              <ModalDescription className="text-sm text-muted-foreground mb-6">
+                We&apos;ve added powerful new features to give you full control over your data.
+              </ModalDescription>
               <div className="space-y-6 mb-8">
                 <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
                   <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
@@ -1075,7 +1217,7 @@ export default function NotepadClient() {
                     Need to share a quick thought? Generate a secure, read-only public link for any note.
                   </p>
                   <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
-                    <li>Click "Create Link" in the top bar</li>
+                    <li>Click &quot;Create Link&quot; in the top bar</li>
                     <li>You choose when links expire (up to 30 days)</li>
                   </ul>
                 </div>
@@ -1090,7 +1232,7 @@ export default function NotepadClient() {
                     Prevent data loss by connecting a real folder on your device. Your notes will be saved as .txt files.
                   </p>
                   <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
-                    <li>Click "Connect Local Folder" in the sidebar</li>
+                    <li>Click &quot;Connect Local Folder&quot; in the sidebar</li>
                     <li>Files auto-sync instantly</li>
                   </ul>
                 </div>
@@ -1102,10 +1244,9 @@ export default function NotepadClient() {
                   setShowAnnouncement(false)
                 }}
               >
-                Awesome, Let's Go!
+                Awesome, Let&apos;s Go!
               </Button>
-            </Card>
-          </div>
+          </Modal>
         )
       }
 

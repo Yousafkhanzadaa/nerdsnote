@@ -37,7 +37,7 @@ const terms = [
   {
     title: "Share links",
     body:
-      "When you create a share link, anyone with the URL can view that note until the link expires. Do not share sensitive, confidential, or regulated information through public links.",
+      "When you create a share link, anyone with the URL can view that note until it expires or you revoke it. Keep the revocation key in the creating browser and do not share sensitive, confidential, or regulated information through public links.",
   },
   {
     title: "Local storage",
@@ -48,6 +48,16 @@ const terms = [
     title: "Service changes",
     body:
       "NerdsNote may update features, limits, expiry behavior, or availability over time to keep the app reliable and safe.",
+  },
+  {
+    title: "Availability and warranty",
+    body:
+      "The service is provided as-is and may be interrupted or changed. To the extent permitted by law, NerdsNote is not responsible for lost local notes, expired shares, or indirect losses; keep independent backups of important work.",
+  },
+  {
+    title: "Questions",
+    body:
+      "Questions about these terms can be sent to khueonstudios@gmail.com.",
   },
 ]
 
@@ -86,6 +96,7 @@ export default function TermsPage() {
               These terms explain user responsibility, share links, local
               storage, backups, and acceptable use.
             </p>
+            <p className="mt-3 text-sm text-muted-foreground">Effective August 1, 2026.</p>
           </div>
         </section>
 

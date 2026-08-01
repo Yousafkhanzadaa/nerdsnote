@@ -32,7 +32,12 @@ const sections = [
   {
     title: "Share links",
     body:
-      "When you create a shareable link, the selected note content is uploaded so anyone with the link can view it. You choose how long the link lasts, up to 30 days, after which it expires automatically.",
+      "When you create a shareable link, the selected note content is stored in our Redis provider so anyone with the URL can view it. You choose a 1, 7, or 30 day lifetime. The public copy is then deleted automatically, or you can revoke it earlier from the browser that created it.",
+  },
+  {
+    title: "Feedback",
+    body:
+      "If you submit feedback, we store the message, optional email address, submission time, and a shortened browser user-agent string for up to 90 days. This information is used only to review and respond to feedback.",
   },
   {
     title: "Analytics",
@@ -42,12 +47,22 @@ const sections = [
   {
     title: "Backups",
     body:
-      "Because local notes live in your browser, clearing browser data or changing devices can remove them. Export important notes regularly.",
+      "Because local notes live in your browser, clearing browser data or changing devices can remove them. Download a full NerdsNote JSON backup or connect a local folder regularly. Folder copies are plain text, so rich formatting is flattened.",
   },
   {
     title: "Shared note indexing",
     body:
       "Shared note pages are marked noindex so search engines are instructed not to include personal share URLs in search results.",
+  },
+  {
+    title: "Service providers and technical data",
+    body:
+      "NerdsNote is hosted on Vercel and uses Upstash-compatible Redis for share links, feedback, and rate limits. Like most web services, these providers may process IP addresses and request metadata to deliver and protect the service. Revocation keys remain only in your browser.",
+  },
+  {
+    title: "Questions and deletion requests",
+    body:
+      "For privacy questions or a deletion request, contact khueonstudios@gmail.com. Include the relevant share URL or feedback email where possible; local browser notes cannot be accessed or recovered by us.",
   },
 ]
 
@@ -86,6 +101,7 @@ export default function PrivacyPage() {
               This policy explains how NerdsNote handles note content, share
               links, analytics, and backups.
             </p>
+            <p className="mt-3 text-sm text-muted-foreground">Effective August 1, 2026.</p>
           </div>
         </section>
 
