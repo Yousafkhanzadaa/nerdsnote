@@ -9,9 +9,9 @@ import { blogPosts, formatBlogDate } from "@/lib/blog-posts"
 import { breadcrumbJsonLd, ogImage, siteUrl } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
-  title: "Note-Taking, Privacy & Writing Guides | NerdsNote",
+  title: "Online Notepad, Privacy & Writing Guides | NerdsNote",
   description:
-    "Practical guides to private browser notes, local storage, backups, focused writing, and better meeting notes from the team behind NerdsNote.",
+    "Practical guides to online notepads, browser auto-save, private local storage, reliable backups, meeting notes, and focused writing.",
   alternates: {
     canonical: "/blog",
     types: {
@@ -50,6 +50,16 @@ const blogJsonLd = {
     url: `${siteUrl}/blog/${post.slug}`,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt,
+    ...(post.image
+      ? {
+          image: {
+            "@type": "ImageObject",
+            url: `${siteUrl}${post.image.src}`,
+            width: post.image.width,
+            height: post.image.height,
+          },
+        }
+      : {}),
   })),
 }
 
@@ -121,6 +131,23 @@ export default function BlogPage() {
                   index === 0 ? "md:col-span-2 md:p-8" : ""
                 }`}
               >
+                {post.image && (
+                  <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
+                    <Image
+                      src={post.image.src}
+                      alt={post.image.alt}
+                      width={post.image.width}
+                      height={post.image.height}
+                      className="h-auto w-full transition-transform duration-300 group-hover:scale-[1.01]"
+                      sizes={
+                        index === 0
+                          ? "(max-width: 768px) 100vw, 1152px"
+                          : "(max-width: 768px) 100vw, 576px"
+                      }
+                      priority={index === 0}
+                    />
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
                   <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">
                     {post.category}

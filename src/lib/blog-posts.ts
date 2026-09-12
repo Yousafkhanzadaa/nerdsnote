@@ -12,6 +12,13 @@ export type BlogSource = {
   url: string
 }
 
+export type BlogImage = {
+  src: string
+  alt: string
+  width: number
+  height: number
+}
+
 export type BlogPost = {
   slug: string
   title: string
@@ -23,12 +30,349 @@ export type BlogPost = {
   updatedAt: string
   readingMinutes: number
   keywords: string[]
+  image?: BlogImage
   intro: string
   sections: BlogSection[]
   sources: BlogSource[]
 }
 
 export const blogPosts: BlogPost[] = [
+  {
+    slug: "online-notepad-with-autosave",
+    title: "Online Notepad With Auto-Save: What Gets Saved and Where?",
+    seoTitle: "Online Notepad With Auto-Save: How It Works",
+    description:
+      "Learn how an online notepad with auto-save stores your writing, how to confirm a note is saved, and when you still need a separate backup.",
+    excerpt:
+      "A practical explanation of browser auto-save, local storage, offline access, and the difference between a saved note and a real backup.",
+    category: "Browser notes",
+    publishedAt: "2026-09-12",
+    updatedAt: "2026-09-12",
+    readingMinutes: 8,
+    keywords: [
+      "online notepad with autosave",
+      "autosave notes online",
+      "browser notepad autosave",
+      "online notes that save automatically",
+    ],
+    image: {
+      src: "/blog/online-notepad-autosave.jpg",
+      alt: "Browser writing page automatically saving note cards into secure local device storage",
+      width: 1200,
+      height: 630,
+    },
+    intro:
+      "An online notepad with auto-save records changes while you write, so you do not need to press a Save button after every edit. The important detail is the destination: some tools save inside your browser, some upload to a cloud account, and others write to a file you choose. Knowing which model you are using tells you where the note will reappear—and what could make it disappear.",
+    sections: [
+      {
+        id: "quick-answer",
+        heading: "The short answer: auto-save is a behavior, not a location",
+        paragraphs: [
+          "Auto-save describes when an app records your changes. It does not describe where those changes go. A browser notepad may save locally on the same device, while an account-based notes app may send each update to a remote server. Both can honestly say they auto-save, but their privacy, recovery, and syncing behavior will be different.",
+          "Before relying on any writing tool, look for a clear storage label. Useful wording includes “saved in this browser,” “saved to your account,” or “saving to this folder.” If the product never identifies the destination, treat the note as temporary until you export it.",
+        ],
+      },
+      {
+        id: "three-autosave-models",
+        heading: "Three common ways an online notepad can save",
+        bullets: [
+          "Browser storage: the note stays in site-specific storage inside the current browser profile. It can survive closing and reopening a normal browser window, but it does not automatically follow you to another browser or device.",
+          "Cloud storage: the note is associated with an account and stored on the provider's systems. This usually enables syncing and recovery, while requiring you to trust the provider's privacy and security practices.",
+          "Local file storage: the app downloads a copy or, with your permission in a supported browser, writes to a folder on your device. The file can then be included in your normal backup system.",
+        ],
+        paragraphs: [
+          "A tool can combine these models. For example, it can keep the fast working copy in browser storage and let you export important notes as plain-text files. That approach preserves quick access without pretending that browser storage is a complete backup system.",
+        ],
+      },
+      {
+        id: "how-nerdsnote-saves",
+        heading: "How NerdsNote auto-saves your notes",
+        paragraphs: [
+          "NerdsNote saves ordinary notes to your browser's local storage as you edit. No account is required, and the working note is not uploaded to NerdsNote's server unless you deliberately create a share link. The status line in the editor says “Auto-saved in browser” when that is the active storage mode.",
+          "On supported desktop browsers, you can also connect a local folder. NerdsNote then writes notes as text files in that folder. Folder access is optional and permission-based, so the browser may ask you to reconnect after a permission expires.",
+        ],
+      },
+      {
+        id: "test-autosave",
+        heading: "How to check that auto-save is working",
+        steps: [
+          "Create a clearly named test note and type a sentence that you can recognize.",
+          "Wait for the editor's saved status instead of closing the tab immediately after the final keystroke.",
+          "Reload the page in the same browser profile and confirm that the note returns.",
+          "If you connected a folder, open the corresponding text file and verify its latest contents.",
+          "Delete the test note only after you understand which copy is the working copy and which is the backup.",
+        ],
+        paragraphs: [
+          "This one-minute test is especially worthwhile before a long writing session. It catches private-browsing mode, disabled storage, expired folder permission, or a different browser profile before you entrust the tool with valuable work.",
+        ],
+      },
+      {
+        id: "autosave-is-not-backup",
+        heading: "Why an auto-saved note is not automatically backed up",
+        paragraphs: [
+          "Auto-save protects you from forgetting to click Save. A backup protects you when the original storage is removed, damaged, or no longer accessible. If both the live note and its history exist only in one browser profile, they share the same point of failure.",
+          "Browser site data can be removed when you clear browsing data, reset a profile, use an automated cleanup tool, or uninstall software. Notes created in a private or incognito session are normally discarded when that private session ends. Device loss and hardware failure are separate risks that auto-save cannot solve.",
+        ],
+      },
+      {
+        id: "safe-workflow",
+        heading: "A safer auto-save workflow for important writing",
+        steps: [
+          "Use browser auto-save for the fast working copy.",
+          "Give important notes descriptive titles so exported files are easy to identify.",
+          "Export a plain-text copy after a meaningful session or milestone.",
+          "Store that file in a backed-up folder or another approved storage location.",
+          "Open a recent export occasionally to make sure your backup is readable.",
+        ],
+        paragraphs: [
+          "For quick calculations, disposable snippets, and rough drafts, the browser copy may be enough. For research, client work, study notes, or anything difficult to recreate, keep at least one independent copy outside the browser.",
+        ],
+      },
+      {
+        id: "autosave-faq",
+        heading: "Does browser auto-save work offline and across devices?",
+        paragraphs: [
+          "A local-first notepad can continue saving while offline once the app itself is available, because writing to browser storage does not require a network request. The note generally remains tied to the same website, browser profile, and device, however. Opening the same site on another computer will not reveal that local copy.",
+          "If automatic cross-device access is essential, choose a trustworthy cloud notes service. If privacy and immediate access matter more, use a local-first notepad and move selected files between devices through your own backup or file-sync workflow.",
+        ],
+      },
+    ],
+    sources: [
+      {
+        label: "MDN: Window.localStorage",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage",
+      },
+      {
+        label: "MDN: Web Storage API and private browsing behavior",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API",
+      },
+      {
+        label: "MDN: File System API",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/File_System_API",
+      },
+      {
+        label: "NerdsNote privacy policy",
+        url: "https://nerdsnote.com/privacy",
+      },
+    ],
+  },
+  {
+    slug: "take-notes-without-installing-app",
+    title: "How to Take Notes on a Computer Without Installing an App",
+    seoTitle: "Take Notes Without Installing an App: Step-by-Step",
+    description:
+      "Take notes on any computer without installing software. Learn how to use a browser notepad safely, save your work, and export portable text files.",
+    excerpt:
+      "Use a browser-based notepad to capture ideas immediately—without a download, account, or heavyweight document editor.",
+    category: "Writing workflows",
+    publishedAt: "2026-09-12",
+    updatedAt: "2026-09-12",
+    readingMinutes: 7,
+    keywords: [
+      "take notes without installing app",
+      "write notes online without download",
+      "browser notepad",
+      "online notepad no installation",
+    ],
+    image: {
+      src: "/blog/notes-without-installing-app.jpg",
+      alt: "Laptop with a browser writing page and a symbol showing that no software installation is needed",
+      width: 1200,
+      height: 630,
+    },
+    intro:
+      "The quickest way to take notes on a computer without installing software is to open a browser notepad, start typing, and export anything you need to keep. This works well on a borrowed machine, a locked-down work computer, a Chromebook, or any moment when installing a full notes app would create more friction than value.",
+    sections: [
+      {
+        id: "fastest-method",
+        heading: "The fastest no-install method",
+        steps: [
+          "Open a browser-based notepad in a normal browser window.",
+          "Confirm whether the editor saves locally, to an account, or only for the current session.",
+          "Create a note with a useful title and begin writing.",
+          "Check the saved status before closing the page.",
+          "Export important notes before leaving a shared computer or clearing browser data.",
+        ],
+        paragraphs: [
+          "NerdsNote opens directly in the browser and does not require an account. It auto-saves regular notes in the current browser profile, supports multiple named notes, and exports plain-text files when you need a durable copy.",
+        ],
+      },
+      {
+        id: "what-to-look-for",
+        heading: "What to look for in a browser notepad",
+        bullets: [
+          "A clear explanation of where the note is stored.",
+          "A visible save status rather than an unexplained promise.",
+          "Export to a common format such as .txt or .md.",
+          "No forced account for basic writing.",
+          "Search and readable note titles if you plan to keep more than one note.",
+          "Offline behavior that is explained rather than implied.",
+        ],
+        paragraphs: [
+          "Avoid choosing by the word free alone. A simple editor is useful only if you know how to return to the note and how to take your work with you. Storage clarity and export matter more than a long list of decorative features.",
+        ],
+      },
+      {
+        id: "good-uses",
+        heading: "Tasks that suit a no-install notepad",
+        bullets: [
+          "Capturing an idea before it disappears.",
+          "Drafting an email or message before pasting it into another service.",
+          "Taking low-risk meeting notes on a temporary workstation.",
+          "Cleaning up copied text or arranging a short outline.",
+          "Keeping a checklist beside another browser tab.",
+          "Writing a code snippet or command that contains no secret credentials.",
+        ],
+        paragraphs: [
+          "The common thread is immediacy. A browser notepad is strongest at the beginning of a task, when you need a blank page now and can decide where the finished material belongs later.",
+        ],
+      },
+      {
+        id: "shared-computer",
+        heading: "Be careful on a shared or managed computer",
+        paragraphs: [
+          "Local browser storage is not the same as a private vault. Another person using the same unlocked browser profile may be able to open the site and read its saved notes. Browser extensions, device administrators, monitoring software, and malware can also affect privacy.",
+          "On a borrowed or public computer, avoid confidential material. Export only when you can place the file somewhere you control, then remove the note and downloaded file if appropriate. Do not assume that private-browsing mode makes activity invisible to the device owner or network operator.",
+        ],
+      },
+      {
+        id: "portable-files",
+        heading: "Keep useful notes portable",
+        paragraphs: [
+          "Plain-text files are a practical bridge between a browser notepad and your long-term system. They open on nearly every operating system, remain searchable, and do not tie the writing to one vendor. A clear filename such as project-kickoff-2026-09-12.txt is easier to recognize than untitled-note.txt.",
+          "If you regularly work in the same supported desktop browser, NerdsNote's optional folder connection can save notes as files in a directory you select. Otherwise, use the Export button for individual notes and move those files into a folder covered by your normal backup routine.",
+        ],
+      },
+      {
+        id: "when-an-installed-app-is-better",
+        heading: "When an installed or account-based app is better",
+        paragraphs: [
+          "Choose a dedicated notes application when you need dependable cross-device sync, deep operating-system integration, large attachments, live collaboration, organizational administration, or formal records management. Those are broader jobs than instant browser capture.",
+          "A useful workflow can include both tools: draft quickly in the browser, export or copy the finished material, and store it in the system appropriate for its value and sensitivity. The goal is not to avoid software at all costs; it is to avoid unnecessary setup when a simple page is enough.",
+        ],
+      },
+    ],
+    sources: [
+      {
+        label: "MDN: Web Storage API",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API",
+      },
+      {
+        label: "Google Chrome Help: How Incognito mode handles site data and downloads",
+        url: "https://support.google.com/chrome/answer/95464",
+      },
+      {
+        label: "MDN: File System API",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/File_System_API",
+      },
+    ],
+  },
+  {
+    slug: "will-clearing-cache-delete-browser-notes",
+    title: "Will Clearing Your Cache Delete Browser Notes?",
+    seoTitle: "Will Clearing Cache Delete Notes? A Safe Backup Guide",
+    description:
+      "Clearing cached files may not delete browser notes, but clearing cookies and site data can. Learn what to check and how to back up notes first.",
+    excerpt:
+      "Understand the important difference between cached files and site data, then protect locally saved notes before cleaning your browser.",
+    category: "Privacy",
+    publishedAt: "2026-09-12",
+    updatedAt: "2026-09-12",
+    readingMinutes: 7,
+    keywords: [
+      "will clearing cache delete notes",
+      "clear cache browser notes",
+      "backup browser notes",
+      "does clearing site data delete localStorage",
+    ],
+    image: {
+      src: "/blog/backup-browser-notes.jpg",
+      alt: "Browser note cards being copied safely to a folder and backup drive before cleanup",
+      width: 1200,
+      height: 630,
+    },
+    intro:
+      "Clearing cached images and files by itself usually does not remove notes stored in local browser storage. Clearing cookies and other site data can remove them. Browser cleanup screens often place these choices beside each other, so the safest approach is to export important notes before deleting any browsing data.",
+    sections: [
+      {
+        id: "cache-vs-site-data",
+        heading: "Cache and site data are not the same thing",
+        paragraphs: [
+          "A browser cache holds temporary copies of website resources such as images, styles, and scripts so pages can load faster. Site data is a broader category that can include cookies, localStorage, IndexedDB, and other information a web app keeps for its features.",
+          "In Chrome, the cleanup option named “Cookies and other site data” includes Web Storage and IndexedDB data. The separate “Cached images and files” option removes cached page resources. Firefox similarly distinguishes temporary cached files from cookies and site data, although its interface can allow both categories to be cleared together.",
+        ],
+      },
+      {
+        id: "direct-answer",
+        heading: "So, will your browser notes be deleted?",
+        bullets: [
+          "Clearing browsing history only: normally no, because the list of visited pages is separate from saved site storage.",
+          "Clearing cached images and files only: normally no, although the app may need to download its interface again.",
+          "Clearing cookies and other site data: possibly yes; browser-stored notes can be included.",
+          "Removing data for the notepad's website: yes, if the notes live in that site's browser storage.",
+          "Closing a private or incognito session: yes for notes stored only in that private session.",
+        ],
+        paragraphs: [
+          "Browser labels and behavior can change, and cleanup utilities may combine categories. If a note matters, do not make its survival depend on interpreting one checkbox correctly.",
+        ],
+      },
+      {
+        id: "backup-first",
+        heading: "Back up NerdsNote before clearing browser data",
+        steps: [
+          "Open NerdsNote in the same browser profile where you created the notes.",
+          "Select an important note and use Export to download it as a .txt file.",
+          "Repeat for each note that would be difficult to recreate.",
+          "Open at least one downloaded file and confirm that the text is complete.",
+          "Move the files into a backed-up folder before clearing cookies or site data.",
+        ],
+        paragraphs: [
+          "If your browser supports NerdsNote's folder connection, you can also save notes directly into a local folder. Confirm that the folder files are current and readable; do not assume a previously granted permission is still active.",
+        ],
+      },
+      {
+        id: "safer-cleanup",
+        heading: "How to clean the browser with less risk",
+        bullets: [
+          "Read every selected category before confirming the deletion.",
+          "Avoid selecting cookies or site data when your goal is only to refresh cached page resources.",
+          "Prefer removing data for one troublesome website over clearing every site's data when the browser offers that control.",
+          "Export browser-based work first, even when you believe the chosen category is harmless.",
+          "After cleanup, reopen the notepad and verify your notes before deleting the exported copies.",
+        ],
+      },
+      {
+        id: "already-cleared",
+        heading: "What to do if you already cleared the data",
+        paragraphs: [
+          "First, make sure you reopened the same website address and browser profile. A note saved under a different browser, profile, device, or website origin will not appear in the current storage area. Also check your Downloads and Documents folders for earlier exports.",
+          "If the site's local storage was deleted and no exported, folder-synced, or system backup copy exists, the web app generally cannot reconstruct the note. Local-first privacy means the service may never have received a server copy to restore. Avoid repeatedly installing cleanup or recovery tools on the affected device unless you understand the risk; they can overwrite recoverable data elsewhere and rarely recreate structured browser storage reliably.",
+        ],
+      },
+      {
+        id: "backup-habit",
+        heading: "Use a backup rhythm you can remember",
+        paragraphs: [
+          "A simple trigger works better than an elaborate schedule: export after each important meeting, at the end of a study session, or whenever a draft reaches a meaningful milestone. Keep filenames descriptive and place the copies somewhere included in your regular device backup.",
+          "Auto-save makes everyday writing smoother. Export makes that writing portable. You need both when the note is worth more than the few seconds it takes to create another copy.",
+        ],
+      },
+    ],
+    sources: [
+      {
+        label: "Google Chrome Help: Delete browsing data",
+        url: "https://support.google.com/chrome/answer/2392709",
+      },
+      {
+        label: "Mozilla Support: Clear cookies and site data in Firefox",
+        url: "https://support.mozilla.org/en-US/kb/clear-cookies-and-site-data-firefox",
+      },
+      {
+        label: "MDN: Window.localStorage",
+        url: "https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage",
+      },
+    ],
+  },
   {
     slug: "private-online-notepad-no-login",
     title: "How to Take Private Notes Online Without an Account",

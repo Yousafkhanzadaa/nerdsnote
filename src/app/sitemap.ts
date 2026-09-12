@@ -6,7 +6,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const evergreenPages: MetadataRoute.Sitemap = [
     {
       url: `${siteUrl}/`,
-      lastModified: "2026-08-01",
+      lastModified: "2026-09-12",
     },
     {
       url: `${siteUrl}/notepad`,
@@ -22,7 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${siteUrl}/blog`,
-      lastModified: "2026-08-01",
+      lastModified: "2026-09-12",
     },
     {
       url: `${siteUrl}/privacy`,

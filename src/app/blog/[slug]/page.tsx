@@ -35,6 +35,14 @@ export async function generateMetadata({
   }
 
   const url = `${siteUrl}/blog/${post.slug}`
+  const socialImage = post.image
+    ? {
+        url: post.image.src,
+        width: post.image.width,
+        height: post.image.height,
+        alt: post.image.alt,
+      }
+    : ogImage
 
   return {
     title: `${post.seoTitle} | NerdsNote`,
@@ -52,13 +60,13 @@ export async function generateMetadata({
       authors: [`${siteUrl}/about`],
       section: post.category,
       tags: post.keywords,
-      images: [ogImage],
+      images: [socialImage],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      images: [ogImage.url],
+      images: [socialImage.url],
     },
   }
 }
@@ -71,13 +79,26 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const url = `${siteUrl}/blog/${post.slug}`
   const relatedPosts = blogPosts.filter((candidate) => candidate.slug !== post.slug).slice(0, 2)
+  const articleImage = post.image
+    ? {
+        "@type": "ImageObject",
+        url: `${siteUrl}${post.image.src}`,
+        width: post.image.width,
+        height: post.image.height,
+      }
+    : {
+        "@type": "ImageObject",
+        url: `${siteUrl}${ogImage.url}`,
+        width: ogImage.width,
+        height: ogImage.height,
+      }
   const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     "@id": `${url}/#article`,
     headline: post.title,
     description: post.description,
-    image: `${siteUrl}${ogImage.url}`,
+    image: articleImage,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt,
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
@@ -174,6 +195,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   Updated <time dateTime={post.updatedAt}>{formatBlogDate(post.updatedAt)}</time>
                 </span>
               </div>
+              {post.image && (
+                <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-muted shadow-sm">
+                  <Image
+                    src={post.image.src}
+                    alt={post.image.alt}
+                    width={post.image.width}
+                    height={post.image.height}
+                    className="h-auto w-full"
+                    sizes="(max-width: 896px) 100vw, 896px"
+                    priority
+                  />
+                </div>
+              )}
             </div>
           </header>
 
