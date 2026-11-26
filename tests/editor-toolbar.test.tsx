@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { Editor } from "@tiptap/core"
 import { TableKit } from "@tiptap/extension-table"
+import { Highlight } from "@tiptap/extension-highlight"
 import StarterKit from "@tiptap/starter-kit"
 
 import { EditorToolbar } from "@/components/editor-toolbar"
@@ -27,6 +28,44 @@ afterEach(() => {
 })
 
 describe("editor toolbar", () => {
+  it("toggles a selected substring and reuses the color chosen in More formatting", async () => {
+    const editor = new Editor({
+      content: "<p>First middle last</p>",
+      extensions: [StarterKit, ParagraphIndent, Highlight.configure({ multicolor: true })],
+    })
+    editors.push(editor)
+    editor.commands.setTextSelection({ from: 7, to: 13 })
+    render(<EditorToolbar editor={editor} />)
+
+    const quick = screen.getByRole("button", { name: "Highlight text" })
+    fireEvent.click(quick)
+    const mark = () => editor.view.dom.querySelector("mark")
+    expect(mark()?.textContent).toBe("middle")
+    expect(mark()?.dataset.color).toBe("#fef08a")
+    expect(quick.getAttribute("aria-pressed")).toBe("true")
+    fireEvent.click(quick)
+    expect(mark()).toBeNull()
+    expect(quick.getAttribute("aria-pressed")).toBe("false")
+
+    fireEvent.click(screen.getByRole("button", { name: "More formatting" }))
+    const palette = screen.getByRole("button", { name: "Choose highlight color" })
+    fireEvent.keyDown(palette, { key: "ArrowDown" })
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Green" }))
+    expect(mark()?.textContent).toBe("middle")
+    expect(mark()?.dataset.color).toBe("#bbf7d0")
+    act(() => { editor.commands.setTextSelection({ from: 14, to: 18 }) })
+    fireEvent.click(quick)
+    expect([...editor.view.dom.querySelectorAll("mark")].map(node => [node.textContent, node.dataset.color]))
+      .toEqual([["middle", "#bbf7d0"], ["last", "#bbf7d0"]])
+
+    act(() => { editor.commands.selectAll() })
+    expect(quick.getAttribute("aria-pressed")).toBe("false")
+    fireEvent.keyDown(palette, { key: "ArrowDown" })
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Remove highlight" }))
+    expect(mark()).toBeNull()
+    expect(editor.getText()).toBe("First middle last")
+  })
+
   it("indents the current paragraph when the toolbar button is clicked", () => {
     const editor = new Editor({
       content: "<p>Paragraph</p>",

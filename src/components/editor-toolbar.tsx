@@ -31,6 +31,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { Button } from "./ui/button"
+import { DEFAULT_HIGHLIGHT_COLOR, HighlightButton } from "./highlight-button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,15 +41,8 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { Input } from "./ui/input"
+import { HIGHLIGHT_COLORS } from "@/lib/note-highlights"
 import { cn } from "@/lib/utils"
-
-const HIGHLIGHT_COLORS = [
-  { name: "Yellow", value: "#fef08a" },
-  { name: "Green", value: "#bbf7d0" },
-  { name: "Blue", value: "#bfdbfe" },
-  { name: "Pink", value: "#fbcfe8" },
-  { name: "Purple", value: "#e9d5ff" },
-] as const
 
 const DEFAULT_TABLE_DIMENSION = 3
 const MAX_TABLE_DIMENSION = 50
@@ -73,6 +67,8 @@ interface EditorToolbarProps {
   onFontSizeChange?: (size: number) => void
   onImageAction?: () => void
   onChartAction?: () => void
+  highlightColor?: string
+  onHighlightColorChange?: (color: string) => void
   contained?: boolean
   endContent?: ReactNode
 }
@@ -90,7 +86,7 @@ function FormatToggle({ label, shortcut, pressed, primary, disabled, onClick, ch
     <Button type="button" variant="ghost" size="icon"
       title={shortcut ? `${label} (${shortcut})` : label} aria-label={label} aria-pressed={pressed}
       disabled={disabled} onClick={onClick}
-      className={cn("aria-pressed:bg-accent aria-pressed:text-accent-foreground", primary && "size-10")}>
+      className={cn("aria-pressed:bg-accent aria-pressed:text-accent-foreground", primary && "h-10 w-9 @min-[21rem]:w-10")}>
       {children}
     </Button>
   )
@@ -111,11 +107,15 @@ export function EditorToolbar({
   onFontSizeChange,
   onImageAction,
   onChartAction,
+  highlightColor,
+  onHighlightColorChange,
   contained = false,
   endContent,
 }: EditorToolbarProps) {
   const moreToolsId = useId()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [localHighlightColor, setLocalHighlightColor] = useState(DEFAULT_HIGHLIGHT_COLOR)
+  const penColor = highlightColor ?? localHighlightColor
   const focusEditorOnClose = useRef(false)
   const [tableFormOpen, setTableFormOpen] = useState(false)
   const [tableRows, setTableRows] = useState(String(DEFAULT_TABLE_DIMENSION))
@@ -140,6 +140,7 @@ export function EditorToolbar({
           heading1: false,
           heading2: false,
           highlight: false,
+          hasHighlight: false,
           highlightColor: null as string | null,
           inTable: false,
           imageSelected: false,
@@ -155,6 +156,8 @@ export function EditorToolbar({
       const inList =
         currentEditor.isActive("listItem") || currentEditor.isActive("taskItem")
       const canIndentParagraph = !inTable && !inList
+      const highlight = currentEditor.isActive("highlight")
+      const { doc, selection, schema } = currentEditor.state
 
       return {
         bold: currentEditor.isActive("bold"),
@@ -171,7 +174,8 @@ export function EditorToolbar({
         code: currentEditor.isActive("code"),
         heading1: currentEditor.isActive("heading", { level: 1 }),
         heading2: currentEditor.isActive("heading", { level: 2 }),
-        highlight: currentEditor.isActive("highlight"),
+        highlight,
+        hasHighlight: highlight || !!(schema.marks.highlight && !selection.empty && doc.rangeHasMark(selection.from, selection.to, schema.marks.highlight)),
         highlightColor: (currentEditor.getAttributes("highlight").color as string | undefined) ?? null,
         inTable,
         imageSelected: currentEditor.isActive("noteImage"),
@@ -257,7 +261,7 @@ export function EditorToolbar({
   return (
     <div className="border-b border-border/70 bg-background px-3 py-1 text-muted-foreground sm:px-6">
       <div className={cn("@container min-w-0", contained && "mx-auto max-w-[47rem] sm:px-3")}>
-        <div role="group" aria-label="Formatting" className="flex flex-wrap items-center gap-x-0.5 gap-y-1 @min-[27rem]:gap-x-1">
+        <div role="group" aria-label="Formatting" className="flex flex-wrap items-center gap-y-1 @min-[21rem]:gap-x-0.5 @min-[27rem]:gap-x-1">
           <FormatToggle label="Bold" shortcut="Ctrl+B" pressed={toolbarState.bold} primary
             disabled={!editor.can().chain().focus().toggleBold().run()}
             onClick={() => editor.chain().focus().toggleBold().run()}>
@@ -268,6 +272,7 @@ export function EditorToolbar({
             onClick={() => editor.chain().focus().toggleItalic().run()}>
             <Italic className="h-4 w-4" />
           </FormatToggle>
+          <HighlightButton editor={editor} color={penColor} pressed={toolbarState.highlight} />
           <FormatToggle label="Bullet List" pressed={toolbarState.bulletList} primary
             onClick={() => editor.chain().focus().toggleBulletList().run()}>
             <List className="h-4 w-4" />
@@ -276,17 +281,17 @@ export function EditorToolbar({
             <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-border" />
           )}
           {onImageAction && (
-            <Button variant="ghost" size="icon" className="size-10 gap-1.5 @min-[23rem]:w-auto @min-[23rem]:px-2"
+            <Button variant="ghost" size="icon" className="h-10 w-9 gap-1.5 @min-[21rem]:w-10 @min-[25rem]:w-auto @min-[25rem]:px-2"
               title={toolbarState.imageSelected ? "Edit image description" : "Insert image"}
               aria-label={toolbarState.imageSelected ? "Edit image description" : "Insert image"}
               onClick={onImageAction}>
               <ImagePlus className="h-4 w-4" />
-              <span className="hidden @min-[23rem]:inline">Image</span>
+              <span className="hidden @min-[25rem]:inline">Image</span>
             </Button>
           )}
           {onChartAction && (
-            <Button variant="ghost" size="icon" className="size-10 gap-1.5 @min-[23rem]:w-auto @min-[23rem]:px-2" title="Insert chart" aria-label="Insert chart" onClick={onChartAction}>
-              <ChartColumn className="h-4 w-4" /> <span className="hidden @min-[23rem]:inline">Chart</span>
+            <Button variant="ghost" size="icon" className="h-10 w-9 gap-1.5 @min-[21rem]:w-10 @min-[25rem]:w-auto @min-[25rem]:px-2" title="Insert chart" aria-label="Insert chart" onClick={onChartAction}>
+              <ChartColumn className="h-4 w-4" /> <span className="hidden @min-[25rem]:inline">Chart</span>
             </Button>
           )}
           <Button
@@ -327,7 +332,7 @@ export function EditorToolbar({
                       "h-9 w-11 gap-0.5 px-1.5",
                       toolbarState.highlight && "bg-accent text-accent-foreground",
                     )}
-                    title="Highlight text (Ctrl+Shift+H)"
+                    title="Choose highlight color"
                     aria-label="Choose highlight color"
                   >
                     <Highlighter className="h-4 w-4" />
@@ -339,7 +344,11 @@ export function EditorToolbar({
                   {HIGHLIGHT_COLORS.map((color) => (
                     <DropdownMenuItem
                       key={color.value}
-                      onSelect={runMenuCommand(() => editor.chain().focus().setHighlight({ color: color.value }).run())}
+                      onSelect={runMenuCommand(() => {
+                        if (highlightColor === undefined) setLocalHighlightColor(color.value)
+                        onHighlightColorChange?.(color.value)
+                        return editor.chain().focus().setHighlight({ color: color.value }).run()
+                      })}
                     >
                       <span
                         className="size-4 rounded-sm border border-black/10"
@@ -352,7 +361,7 @@ export function EditorToolbar({
                   ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    disabled={!toolbarState.highlight}
+                    disabled={!toolbarState.hasHighlight}
                     onSelect={runMenuCommand(() => editor.chain().focus().unsetHighlight().run())}
                   >
                     <Eraser className="h-4 w-4" />

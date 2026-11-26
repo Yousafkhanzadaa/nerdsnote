@@ -8,6 +8,7 @@ import { GET } from "@/app/api/share/[slug]/route"
 import { POST } from "@/app/api/share/route"
 import { metadata } from "@/app/s/[slug]/page"
 import SharedNoteView from "@/app/s/[slug]/shared-note-view"
+import { prepareShareContent } from "@/lib/share-images"
 import { MAX_CONTENT_SIZE, MAX_SHARE_REQUEST_BYTES, MAX_SLUG_RETRIES } from "@/lib/share-types"
 
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mOwjdEBAAGfAMbFnGqmAAAAAElFTkSuQmCC"
@@ -150,6 +151,43 @@ describe("creating a share link", () => {
 })
 
 describe("reading a share link", () => {
+  it("preserves selected highlights in a share snapshot, import response and sanitized reader, including code", async () => {
+    const content = '<p><mark data-color="#fef08a">One</mark> <strong><mark data-color="#bbf7d0">two</mark></strong> '
+      + '<code><mark data-color="#bfdbfe">inline</mark></code> <mark data-color="#fbcfe8"><code>alternate</code></mark></p>'
+      + '<pre><code>uncolored\n<mark data-color="#e9d5ff" style="background-color:#e9d5ff">block</mark></code></pre>'
+    const response = await create({ content: await prepareShareContent(content) })
+    expect(response.status).toBe(200)
+    const { slug } = await response.json()
+    const [, snapshot] = kv.set.mock.calls[0]
+    expect(snapshot.content).toBe(content)
+    kv.get.mockResolvedValueOnce(snapshot)
+    const imported = await (await read(slug)).json()
+    expect(imported.content).toBe(content)
+
+    const { container } = render(createElement(SharedNoteView, { ...imported, openInAppUrl: "/notepad" }))
+    const marks = Array.from(container.querySelectorAll("mark"))
+    expect(marks.map(mark => [mark.textContent, mark.dataset.color])).toEqual([
+      ["One", "#fef08a"], ["two", "#bbf7d0"], ["inline", "#bfdbfe"], ["alternate", "#fbcfe8"], ["block", "#e9d5ff"],
+    ])
+    expect(container.querySelector("strong mark")?.textContent).toBe("two")
+    expect(container.querySelector("p code mark")?.textContent).toBe("inline")
+    expect(container.querySelector("p mark code")?.textContent).toBe("alternate")
+    expect(container.querySelector("pre code")?.textContent).toBe("uncolored\nblock")
+    expect(container.querySelector("pre code mark")?.hasAttribute("style")).toBe(false)
+  })
+
+  it("restores recognized palette colors from imported mark styles without retaining arbitrary styling", () => {
+    const content = '<p><mark style="background-color:#bfdbfe;position:fixed">Blue</mark> '
+      + '<mark data-color="rgb(233, 213, 255)">Purple</mark> <mark data-color="#FBCFE8">Pink</mark> '
+      + '<mark style="background-color:#202020">Other</mark> <mark>Default</mark></p>'
+    const { container } = render(createElement(SharedNoteView, {
+      content, createdAt: "2026-01-01", expiresAt: null, openInAppUrl: "/notepad",
+    }))
+    expect(Array.from(container.querySelectorAll("mark"), mark => mark.getAttribute("data-color")))
+      .toEqual(["#bfdbfe", "#e9d5ff", "#fbcfe8", null, null])
+    expect(container.querySelector("mark[style]")).toBeNull()
+  })
+
   it.each(["OldLink8", "N".repeat(21)])("opens an existing snapshot by its token", async slug => {
     const note = { content: "<p>A note</p>", createdAt: "2026-01-01T00:00:00.000Z", expiresAt: null }
     kv.get.mockResolvedValue(note)
