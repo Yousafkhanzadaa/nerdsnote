@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og"
 
 // Default social card used for OpenGraph and Twitter across the site.
-// Rendered at build time — monochrome to match the app's black/white theme.
 export const alt =
   "NerdsNote — a private online notepad for fast, focused writing"
 export const size = { width: 1200, height: 630 }
@@ -18,8 +17,8 @@ export default function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "72px 80px",
-          background: "#ffffff",
-          color: "#0a0a0a",
+          background: "#f7f5ed",
+          color: "#292e26",
         }}
       >
         {/* Brand */}
@@ -32,8 +31,8 @@ export default function OpengraphImage() {
               width: 64,
               height: 64,
               borderRadius: 14,
-              background: "#0a0a0a",
-              color: "#ffffff",
+              background: "#465b42",
+              color: "#fffdf6",
               fontSize: 38,
               fontWeight: 700,
             }}
@@ -58,14 +57,14 @@ export default function OpengraphImage() {
           >
             A private online notepad for fast, focused writing.
           </div>
-          <div style={{ fontSize: 30, color: "#666666", maxWidth: 900 }}>
-            Free, local-first, and distraction-free. No account required.
+          <div style={{ fontSize: 30, color: "#465b42", maxWidth: 900 }}>
+            Write for free. Your notes save in your browser.
           </div>
         </div>
 
         {/* Feature chips */}
         <div style={{ display: "flex", gap: 16 }}>
-          {["No account", "Works offline", "Dark mode", "Import & export"].map(
+          {["No account", "Images and charts", "Optional sharing"].map(
             (label) => (
               <div
                 key={label}
@@ -74,9 +73,9 @@ export default function OpengraphImage() {
                   alignItems: "center",
                   padding: "12px 22px",
                   borderRadius: 999,
-                  border: "1px solid #e5e5e5",
+                  border: "1px solid #c9cdbd",
                   fontSize: 26,
-                  color: "#444444",
+                  color: "#465b42",
                 }}
               >
                 {label}

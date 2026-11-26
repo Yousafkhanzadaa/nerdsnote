@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react"
 
 import { SiteFooter, SiteHeader } from "@/components/site-chrome"
 import { JsonLd } from "@/components/json-ld"
-import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
+import { breadcrumbJsonLd, websiteOpenGraph } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "About NerdsNote — Why We Built a Private, Local-First Notepad",
@@ -14,11 +14,11 @@ export const metadata: Metadata = {
     canonical: "/about",
   },
   openGraph: {
+    ...websiteOpenGraph,
     title: "About NerdsNote — A Private, Local-First Notepad",
     description:
       "Why we built NerdsNote: a fast, private, distraction-free place to write in the browser. No login, no ads, no clutter.",
     url: "https://nerdsnote.com/about",
-    images: [ogImage],
   },
 }
 
@@ -28,7 +28,7 @@ const heroIntro =
 const highlights = [
   "No account needed — it opens in seconds",
   "Notes stay private on your own device",
-  "Works offline once it has loaded",
+  "Keep writing offline in an open notebook",
   "Autosaves quietly as you type",
   "Dark mode, instant search, import, and export",
   "Your words stay portable as plain text",
@@ -37,11 +37,11 @@ const highlights = [
 const story = [
   {
     heading: "Private by design",
-    body: "Your notes are saved locally in your browser, not on our servers. What you write stays on your machine unless you deliberately create a share link. There is no email or password to hand over before you start, and no account you can be locked out of. You can export everything as plain text whenever you like, so your words are always yours to keep and back up.",
+    body: "Your notes are saved locally in your browser, not on our servers. What you write stays on your machine unless you deliberately create a share link. There is no email or password to hand over before you start, and no account you can be locked out of. Use Download text file to keep a copy of the writing in a note. For a note with pictures or charts, Download note with images keeps those too.",
   },
   {
     heading: "Fast, and out of your way",
-    body: "The best notepad is the one you forget you are using. NerdsNote loads in a second or two and drops you straight onto the page. Focus mode strips the screen back to just you and the text, autosave protects drafts from closed tabs and refreshes, and once the app has loaded you can keep writing even if your connection drops.",
+    body: "The best notepad is the one you forget you are using. The homepage opens with a space for a quick draft. Focus mode strips the screen back to just you and the text, autosave protects drafts from closed tabs and refreshes, and once the app has loaded you can keep writing even if your connection drops.",
   },
   {
     heading: "Plain text, because it lasts",

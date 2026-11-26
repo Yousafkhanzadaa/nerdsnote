@@ -6,7 +6,7 @@ import { ArrowRight, Rss } from "lucide-react"
 import { JsonLd } from "@/components/json-ld"
 import { SiteFooter, SiteHeader } from "@/components/site-chrome"
 import { blogPosts, formatBlogDate } from "@/lib/blog-posts"
-import { breadcrumbJsonLd, ogImage, siteUrl } from "@/lib/structured-data"
+import { breadcrumbJsonLd, guideFeedTypes, siteUrl, websiteOpenGraph } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "Online Notepad, Privacy & Writing Guides | NerdsNote",
@@ -14,24 +14,21 @@ export const metadata: Metadata = {
     "Practical guides to online notepads, browser auto-save, private local storage, reliable backups, meeting notes, and focused writing.",
   alternates: {
     canonical: "/blog",
-    types: {
-      "application/rss+xml": "/feed.xml",
-    },
+    types: guideFeedTypes,
   },
   openGraph: {
-    type: "website",
+    ...websiteOpenGraph,
     title: "NerdsNote Guides — Private Notes and Better Writing",
     description:
       "Useful, experience-led guides to browser note privacy, local storage, backups, and practical writing workflows.",
     url: `${siteUrl}/blog`,
-    images: [ogImage],
   },
   twitter: {
     card: "summary_large_image",
+    images: websiteOpenGraph.images,
     title: "NerdsNote Guides — Private Notes and Better Writing",
     description:
       "Useful guides to browser note privacy, local storage, backups, and practical writing workflows.",
-    images: [ogImage.url],
   },
 }
 

@@ -688,6 +688,13 @@ export default function NotepadClient() {
       )}
 
       <main className="scrollbar-theme min-h-0 flex-1 overflow-y-auto" aria-label="Writing space">
+        <h1 className="sr-only">Your NerdsNote notebook</h1>
+        <noscript>
+          <div className="paper-reading py-10">
+            <p>Turn on JavaScript to open your notes and save your writing in this browser.</p>
+            <a href="/blog/online-notepad-with-autosave" className="paper-link">How note saving works</a>
+          </div>
+        </noscript>
         {isStorageReady && (activeNote ? (
           <div className="mx-auto w-full max-w-[47rem] px-6 pt-[clamp(3rem,9vh,7rem)] pb-16 sm:px-12">
             <input
@@ -710,7 +717,7 @@ export default function NotepadClient() {
         ) : (
           <div className="mx-auto flex max-w-[47rem] flex-col items-start px-6 pt-[clamp(4rem,14vh,9rem)] sm:px-12">
             <BookOpen className="mb-5 size-7 text-primary" strokeWidth={1.4} />
-            <h1 className="font-serif text-4xl tracking-tight">{notebook.current.warning ? "Your stored notebook needs attention." : "Your notebook is empty."}</h1>
+            <h2 className="font-serif text-4xl tracking-tight">{notebook.current.warning ? "Your stored notebook needs attention." : "Your notebook is empty."}</h2>
             <p className="mt-3 text-sm text-muted-foreground">{notebook.current.warning ? "New writing stays in this session. Download a copy before closing the page." : "Create a note or open a text file to begin."}</p>
             <div className="mt-7 flex flex-wrap gap-2">
               <Button onClick={createNewNote}><Plus /> New note</Button>

@@ -11,7 +11,7 @@ import {
   formatBlogDate,
   getBlogPost,
 } from "@/lib/blog-posts"
-import { breadcrumbJsonLd, ogImage, siteUrl } from "@/lib/structured-data"
+import { breadcrumbJsonLd, guideFeedTypes, ogImage, siteName, siteUrl } from "@/lib/structured-data"
 
 type BlogPostPageProps = {
   params: Promise<{ slug: string }>
@@ -47,11 +47,12 @@ export async function generateMetadata({
   return {
     title: `${post.seoTitle} | NerdsNote`,
     description: post.description,
-    alternates: { canonical: `/blog/${post.slug}` },
+    alternates: { canonical: `/blog/${post.slug}`, types: guideFeedTypes },
     authors: [{ name: "NerdsNote Editorial Team", url: `${siteUrl}/about` }],
     category: post.category,
     openGraph: {
       type: "article",
+      siteName,
       title: post.title,
       description: post.description,
       url,
@@ -78,7 +79,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   if (!post) notFound()
 
   const url = `${siteUrl}/blog/${post.slug}`
-  const relatedPosts = blogPosts.filter((candidate) => candidate.slug !== post.slug).slice(0, 2)
+  const relatedPosts = post.relatedSlugs.map(getBlogPost).filter((guide) => guide !== undefined)
   const articleImage = post.image
     ? {
         "@type": "ImageObject",

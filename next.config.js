@@ -16,6 +16,15 @@ const nextConfig = {
           { key: "X-Robots-Tag", value: "noindex, nofollow, nosnippet" },
         ],
       },
+      {
+        source: "/notepad",
+        has: [{ type: "query", key: "openShared" }],
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, nosnippet" }],
+      },
+      {
+        source: "/api/share/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, nosnippet" }],
+      },
     ];
   },
   turbopack: {

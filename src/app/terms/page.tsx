@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 import { ReadingPage, ReadingSection } from "@/components/reading-page"
-import { ogImage } from "@/lib/structured-data"
+import { websiteOpenGraph } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "Terms and Conditions - NerdsNote",
@@ -11,11 +11,11 @@ export const metadata: Metadata = {
     canonical: "/terms",
   },
   openGraph: {
+    ...websiteOpenGraph,
     title: "Terms and Conditions - NerdsNote",
     description:
       "Terms for using NerdsNote as a local-first online notepad and share-link tool.",
     url: "https://nerdsnote.com/terms",
-    images: [ogImage],
   },
 }
 

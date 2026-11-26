@@ -70,24 +70,27 @@ export function MiniNotepadPreview() {
         aria-hidden="true"
         className="absolute -top-px right-6 h-6 w-3.5 bg-primary [clip-path:polygon(0_0,100%_0,100%_100%,50%_78%,0_100%)] sm:right-12 sm:h-8"
       />
-      <h1 id="draft-heading" className="font-serif text-[2.75rem] leading-tight font-normal tracking-[-0.045em] sm:text-6xl">
-        <label htmlFor="landing-note-preview">Quick draft</label>
+      <h1 id="draft-heading" className="font-serif text-[clamp(2rem,7vw,3.75rem)] leading-tight font-normal tracking-[-0.045em]">
+        Free online notepad
       </h1>
-      <p id="draft-storage" className="mt-3 flex min-h-5 items-center gap-1.5 text-xs text-muted-foreground">
-        {storageError ? (
-          <span role="status" className="text-destructive">{storageError}</span>
-        ) : draft ? (
-          <>
-            <Check className="size-3.5 text-primary" aria-hidden="true" />
-            Saved in this browser
-          </>
-        ) : (
-          <>
-            <LockKeyhole className="size-3.5" aria-hidden="true" />
-            Private to this browser
-          </>
-        )}
-      </p>
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+        <label htmlFor="landing-note-preview" className="font-medium">Quick draft</label>
+        <p id="draft-storage" className="flex min-h-5 items-center gap-1.5 text-muted-foreground">
+          {storageError ? (
+            <span role="status" className="text-destructive">{storageError}</span>
+          ) : draft ? (
+            <>
+              <Check className="size-3.5 text-primary" aria-hidden="true" />
+              Saved in this browser
+            </>
+          ) : (
+            <>
+              <LockKeyhole className="size-3.5" aria-hidden="true" />
+              Private to this browser
+            </>
+          )}
+        </p>
+      </div>
 
       <textarea
         id="landing-note-preview"

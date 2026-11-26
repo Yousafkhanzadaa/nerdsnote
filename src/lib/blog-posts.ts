@@ -30,6 +30,7 @@ export type BlogPost = {
   updatedAt: string
   readingMinutes: number
   keywords: string[]
+  relatedSlugs: string[]
   image?: BlogImage
   intro: string
   sections: BlogSection[]
@@ -40,15 +41,16 @@ export const blogPosts: BlogPost[] = [
   {
     slug: "online-notepad-with-autosave",
     title: "Online Notepad With Auto-Save: What Gets Saved and Where?",
-    seoTitle: "Online Notepad With Auto-Save: How It Works",
+    seoTitle: "Does an Online Notepad Save Automatically?",
     description:
-      "Learn how an online notepad with auto-save stores your writing, how to confirm a note is saved, and when you still need a separate backup.",
+      "NerdsNote saves as you type in the same browser profile. Find your saved note, check the editor's status, and download a copy before clearing site data.",
     excerpt:
       "A practical explanation of browser auto-save, local storage, offline access, and the difference between a saved note and a real backup.",
     category: "Browser notes",
     publishedAt: "2026-09-12",
-    updatedAt: "2026-09-12",
+    updatedAt: "2026-11-26",
     readingMinutes: 8,
+    relatedSlugs: ["will-clearing-cache-delete-browser-notes", "browser-storage-vs-cloud-notes"],
     keywords: [
       "online notepad with autosave",
       "autosave notes online",
@@ -62,11 +64,11 @@ export const blogPosts: BlogPost[] = [
       height: 630,
     },
     intro:
-      "An online notepad with auto-save records changes while you write, so you do not need to press a Save button after every edit. The important detail is the destination: some tools save inside your browser, some upload to a cloud account, and others write to a file you choose. Knowing which model you are using tells you where the note will reappear—and what could make it disappear.",
+      "NerdsNote automatically saves your edits in the browser as you type. To find a note again, open the notebook in the same browser profile on the same device and choose Notes. Other online notepads may save to an account, a file, or only for the current session.",
     sections: [
       {
         id: "quick-answer",
-        heading: "The short answer: auto-save is a behavior, not a location",
+        heading: "Where does an online notepad save your work?",
         paragraphs: [
           "Auto-save describes when an app records your changes. It does not describe where those changes go. A browser notepad may save locally on the same device, while an account-based notes app may send each update to a remote server. Both can honestly say they auto-save, but their privacy, recovery, and syncing behavior will be different.",
           "Before relying on any writing tool, look for a clear storage label. Useful wording includes “saved in this browser,” “saved to your account,” or “saving to this folder.” If the product never identifies the destination, treat the note as temporary until you export it.",
@@ -88,8 +90,8 @@ export const blogPosts: BlogPost[] = [
         id: "how-nerdsnote-saves",
         heading: "How NerdsNote auto-saves your notes",
         paragraphs: [
-          "NerdsNote saves ordinary notes to your browser's local storage as you edit. No account is required, and the working note is not uploaded to NerdsNote's server unless you deliberately create a share link. The status line in the editor says “Auto-saved in browser” when that is the active storage mode.",
-          "On supported desktop browsers, you can also connect a local folder. NerdsNote then writes notes as text files in that folder. Folder access is optional and permission-based, so the browser may ask you to reconnect after a permission expires.",
+          "Look below an edited note for “Saved in this browser.” NerdsNote uploads a copy only when you create a share link. If the editor reports “Browser save unavailable,” download the note before closing the tab.",
+          "In a supported browser, open More options and choose “Connect a folder” to save new notes as files. You can choose whether to copy existing browser notes into that folder. Linked notes show the folder name below the editor. If the browser asks you to reconnect, choose the same folder again.",
         ],
       },
       {
@@ -97,13 +99,13 @@ export const blogPosts: BlogPost[] = [
         heading: "How to check that auto-save is working",
         steps: [
           "Create a clearly named test note and type a sentence that you can recognize.",
-          "Wait for the editor's saved status instead of closing the tab immediately after the final keystroke.",
+          "In the default browser mode, check for “Saved in this browser” below the edited note.",
           "Reload the page in the same browser profile and confirm that the note returns.",
           "If you connected a folder, open the corresponding text file and verify its latest contents.",
           "Delete the test note only after you understand which copy is the working copy and which is the backup.",
         ],
         paragraphs: [
-          "This one-minute test is especially worthwhile before a long writing session. It catches private-browsing mode, disabled storage, expired folder permission, or a different browser profile before you entrust the tool with valuable work.",
+          "A private window can pass the reload test and still discard its notes when the private session ends. Use a regular browser window for writing you want to return to.",
         ],
       },
       {
@@ -120,7 +122,7 @@ export const blogPosts: BlogPost[] = [
         steps: [
           "Use browser auto-save for the fast working copy.",
           "Give important notes descriptive titles so exported files are easy to identify.",
-          "Export a plain-text copy after a meaningful session or milestone.",
+          "In More options, choose “Download text file” for a plain-text copy. If the note includes pictures or charts, choose “Download note with images” to keep them.",
           "Store that file in a backed-up folder or another approved storage location.",
           "Open a recent export occasionally to make sure your backup is readable.",
         ],
@@ -132,7 +134,7 @@ export const blogPosts: BlogPost[] = [
         id: "autosave-faq",
         heading: "Does browser auto-save work offline and across devices?",
         paragraphs: [
-          "A local-first notepad can continue saving while offline once the app itself is available, because writing to browser storage does not require a network request. The note generally remains tied to the same website, browser profile, and device, however. Opening the same site on another computer will not reveal that local copy.",
+          "If the NerdsNote editor is already open when your connection drops, you can keep writing and saving in that tab. Loading the notebook again may require a connection. Creating or opening a share link requires one.",
           "If automatic cross-device access is essential, choose a trustworthy cloud notes service. If privacy and immediate access matter more, use a local-first notepad and move selected files between devices through your own backup or file-sync workflow.",
         ],
       },
@@ -166,8 +168,9 @@ export const blogPosts: BlogPost[] = [
       "Use a browser-based notepad to capture ideas immediately—without a download, account, or heavyweight document editor.",
     category: "Writing workflows",
     publishedAt: "2026-09-12",
-    updatedAt: "2026-09-12",
+    updatedAt: "2026-11-26",
     readingMinutes: 7,
+    relatedSlugs: ["how-to-take-better-meeting-notes", "private-online-notepad-no-login"],
     keywords: [
       "take notes without installing app",
       "write notes online without download",
@@ -240,7 +243,8 @@ export const blogPosts: BlogPost[] = [
         heading: "Keep useful notes portable",
         paragraphs: [
           "Plain-text files are a practical bridge between a browser notepad and your long-term system. They open on nearly every operating system, remain searchable, and do not tie the writing to one vendor. A clear filename such as project-kickoff-2026-09-12.txt is easier to recognize than untitled-note.txt.",
-          "If you regularly work in the same supported desktop browser, NerdsNote's optional folder connection can save notes as files in a directory you select. Otherwise, use the Export button for individual notes and move those files into a folder covered by your normal backup routine.",
+          "For an individual NerdsNote note, open More options and choose “Download text file.” If the note contains pictures or charts, choose “Download note with images” to keep them. You can bring either file back through “Import a file.”",
+          "A supported browser also lets you connect a folder for ongoing edits. Keep an independent copy of important files in your regular backup, since deleting a connected note deletes its file.",
         ],
       },
       {
@@ -277,8 +281,9 @@ export const blogPosts: BlogPost[] = [
       "Understand the important difference between cached files and site data, then protect locally saved notes before cleaning your browser.",
     category: "Privacy",
     publishedAt: "2026-09-12",
-    updatedAt: "2026-09-12",
+    updatedAt: "2026-11-26",
     readingMinutes: 7,
+    relatedSlugs: ["online-notepad-with-autosave", "private-online-notepad-no-login"],
     keywords: [
       "will clearing cache delete notes",
       "clear cache browser notes",
@@ -321,13 +326,13 @@ export const blogPosts: BlogPost[] = [
         heading: "Back up NerdsNote before clearing browser data",
         steps: [
           "Open NerdsNote in the same browser profile where you created the notes.",
-          "Select an important note and use Export to download it as a .txt file.",
-          "Repeat for each note that would be difficult to recreate.",
-          "Open at least one downloaded file and confirm that the text is complete.",
+          "Open a note, choose More options, then “Download text file” for a plain-text copy. For a note with pictures or charts, choose “Download note with images” to keep the visuals and formatting.",
+          "Repeat for each note you want to keep. Both download options produce a .txt file.",
+          "Check a plain-text download in any text editor. For a note with images, use “Import a file” in NerdsNote to open a copy and verify the pictures and charts.",
           "Move the files into a backed-up folder before clearing cookies or site data.",
         ],
         paragraphs: [
-          "If your browser supports NerdsNote's folder connection, you can also save notes directly into a local folder. Confirm that the folder files are current and readable; do not assume a previously granted permission is still active.",
+          "If you use a connected folder, check that the latest edits are in the files you want and copy them to a separate backup location. The connected folder is a working folder. Deleting a connected note in the editor also deletes its file.",
         ],
       },
       {
@@ -346,7 +351,8 @@ export const blogPosts: BlogPost[] = [
         heading: "What to do if you already cleared the data",
         paragraphs: [
           "First, make sure you reopened the same website address and browser profile. A note saved under a different browser, profile, device, or website origin will not appear in the current storage area. Also check your Downloads and Documents folders for earlier exports.",
-          "If the site's local storage was deleted and no exported, folder-synced, or system backup copy exists, the web app generally cannot reconstruct the note. Local-first privacy means the service may never have received a server copy to restore. Avoid repeatedly installing cleanup or recovery tools on the affected device unless you understand the risk; they can overwrite recoverable data elsewhere and rarely recreate structured browser storage reliably.",
+          "If you previously connected a folder, select “Connect a folder” in More options and choose that folder again. To restore a downloaded .txt or .md file, choose “Import a file.” If you shared the note and its link is still active, open it and choose “Save to my notes.” It contains the version you shared.",
+          "If the browser copy was the only copy, NerdsNote has no server backup to restore. Check your device backups for an earlier copy of the files or browser profile.",
         ],
       },
       {
@@ -385,6 +391,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-07-22",
     updatedAt: "2026-08-01",
     readingMinutes: 7,
+    relatedSlugs: ["browser-storage-vs-cloud-notes", "take-notes-without-installing-app"],
     keywords: [
       "private online notepad",
       "online notepad without login",
@@ -470,6 +477,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-07-26",
     updatedAt: "2026-08-01",
     readingMinutes: 8,
+    relatedSlugs: ["private-online-notepad-no-login", "will-clearing-cache-delete-browser-notes"],
     keywords: [
       "browser storage vs cloud notes",
       "where browser notes are stored",
@@ -552,6 +560,7 @@ export const blogPosts: BlogPost[] = [
     publishedAt: "2026-07-30",
     updatedAt: "2026-08-01",
     readingMinutes: 6,
+    relatedSlugs: ["take-notes-without-installing-app", "online-notepad-with-autosave"],
     keywords: [
       "how to take meeting notes",
       "meeting notes template",

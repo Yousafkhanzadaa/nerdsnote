@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 import { ReadingPage, ReadingSection } from "@/components/reading-page"
-import { ogImage } from "@/lib/structured-data"
+import { websiteOpenGraph } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "Privacy Policy - NerdsNote",
@@ -11,11 +11,11 @@ export const metadata: Metadata = {
     canonical: "/privacy",
   },
   openGraph: {
+    ...websiteOpenGraph,
     title: "Privacy Policy - NerdsNote",
     description:
       "How NerdsNote handles local notes, share links, analytics, and user data.",
     url: "https://nerdsnote.com/privacy",
-    images: [ogImage],
   },
 }
 

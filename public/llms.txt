@@ -7,7 +7,7 @@ Key facts:
 - Free to use, with no account or login required.
 - Privacy-first: notes are saved in the browser's local storage by default and are never uploaded unless the user deliberately creates a share link.
 - Works offline once the app has loaded.
-- Plain-text focused: import `.txt` and `.md` files, export portable plain text.
+- Import `.txt` and `.md` files and download individual notes as plain text. Notes with images or charts also have a download that keeps the pictures.
 - Additional features: autosave, dark mode, instant search across notes, full-screen focus mode, and optional local folder sync in supported browsers.
 - Built and maintained by Khueon Studios.
 
@@ -21,6 +21,8 @@ Key facts:
 
 ## Popular guides
 
+- [Does an online notepad save automatically?](https://nerdsnote.com/blog/online-notepad-with-autosave): How to check that a note saved and reopen it in the same browser.
+- [Will clearing the cache delete browser notes?](https://nerdsnote.com/blog/will-clearing-cache-delete-browser-notes): Which browser settings affect local notes and how to keep a backup.
 - [How to take private notes online without an account](https://nerdsnote.com/blog/private-online-notepad-no-login): Privacy checks, safe usage, browser-storage limits, and backups.
 - [Browser storage vs cloud notes](https://nerdsnote.com/blog/browser-storage-vs-cloud-notes): A comparison of privacy, sync, recovery, sharing, and portability.
 - [How to take better meeting notes](https://nerdsnote.com/blog/how-to-take-better-meeting-notes): A practical meeting-notes template with decisions and action items.

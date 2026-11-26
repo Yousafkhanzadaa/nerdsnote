@@ -15,16 +15,10 @@ const structuredData = [organizationJsonLd, websiteJsonLd]
 
 export const metadata: Metadata = {
     applicationName: siteName,
-    title: "NerdsNote — Free Online Notepad | Distraction‑Free, Private, Fast",
+    title: "NerdsNote — Free Online Notepad",
     description:
-        "NerdsNote is a free online notepad for distraction‑free writing. No login, no ads. Auto‑save to your device, dark mode, import/export, search, and offline support.",
+        "Write and save private notes in your browser with NerdsNote. No account required. Add images and charts, download a copy, or share one note by link.",
     metadataBase: new URL(siteUrl),
-    alternates: {
-        canonical: "/",
-        types: {
-            "application/rss+xml": "/feed.xml",
-        },
-    },
     category: "productivity",
     creator: "Khueon Studios",
     publisher: "Khueon Studios",
@@ -34,16 +28,12 @@ export const metadata: Metadata = {
         url: siteUrl,
         title: "NerdsNote — Free Online Notepad",
         description:
-            "Free, distraction‑free online notepad. No login, no ads. Local auto‑save, dark mode, import/export, and search.",
+            "Write private notes with local autosave, images, charts, and optional read-only sharing.",
         siteName: "NerdsNote",
         images: [ogImage],
     },
     twitter: {
         card: "summary_large_image",
-        title: "NerdsNote — Free Online Notepad",
-        description:
-            "Free, distraction‑free online notepad. No login, no ads. Local auto‑save, dark mode, import/export, and search.",
-        images: [ogImage.url],
     },
     icons: {
         icon: [
@@ -70,15 +60,7 @@ export const metadata: Metadata = {
         ],
     },
     robots: {
-        index: true,
-        follow: true,
-        googleBot: {
-            index: true,
-            follow: true,
-            "max-image-preview": "large",
-            "max-snippet": -1,
-            "max-video-preview": -1,
-        },
+        "max-image-preview": "large",
     },
     formatDetection: {
         email: false,
