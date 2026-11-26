@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next"
+import { siteUrl } from "@/lib/structured-data"
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -9,6 +10,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/"],
       },
     ],
-    sitemap: `https://nerdsnote.com/sitemap.xml`,
+    sitemap: `${siteUrl}/sitemap.xml`,
   }
 }

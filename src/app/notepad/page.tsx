@@ -1,21 +1,20 @@
 import type { Metadata } from "next"
 import NotepadClient from "@/components/notepad-client"
 import { JsonLd } from "@/components/json-ld"
-import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
+import { breadcrumbJsonLd, websiteOpenGraph } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
-  title: "Open the NerdsNote Editor — Write Notes in Your Browser",
+  title: "Online Notebook Editor | NerdsNote",
   description:
-    "Open the editor and start writing instantly. Autosave, dark mode, instant search, and offline access — private, local-first, and no login required.",
+    "Open your notebook to write, format, and search notes saved in this browser. Add images or charts, download your work, or share a read-only copy.",
   alternates: {
     canonical: "/notepad",
   },
   openGraph: {
-    title: "NerdsNote Editor",
-    description:
-      "Write distraction-free with NerdsNote. Auto-save, dark mode, and local privacy.",
+    ...websiteOpenGraph,
+    title: "Online Notebook Editor | NerdsNote",
+    description: "Write, format, and search your notes in this browser. Add images or charts and download a copy to keep.",
     url: "https://nerdsnote.com/notepad",
-    images: [ogImage],
   },
 }
 

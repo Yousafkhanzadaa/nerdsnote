@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 import { ReadingPage, ReadingSection } from "@/components/reading-page"
-import { ogImage } from "@/lib/structured-data"
+import { websiteOpenGraph } from "@/lib/structured-data"
 
 const contactEmail = "khueonstudios@gmail.com"
 
@@ -13,11 +13,11 @@ export const metadata: Metadata = {
     canonical: "/contact",
   },
   openGraph: {
+    ...websiteOpenGraph,
     title: "Contact - NerdsNote",
     description:
       "Contact NerdsNote by email for support, feedback, questions, or product inquiries.",
     url: "https://nerdsnote.com/contact",
-    images: [ogImage],
   },
 }
 

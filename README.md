@@ -38,6 +38,8 @@ npm run build   # production build
 npm test        # run the test suite
 ```
 
+With the production build running locally, use `npm run check:seo -- http://localhost:3000` to check the rendered pages, sitemap, social previews and indexing rules. The check only requests localhost and expects canonical URLs on nerdsnote.com.
+
 ## Environment variables
 
 Share links rely on Vercel KV. Configure these in production (and in `.env.local`

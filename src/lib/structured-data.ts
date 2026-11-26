@@ -1,5 +1,6 @@
 export const siteUrl = "https://nerdsnote.com"
 export const siteName = "NerdsNote"
+export const guideFeedTypes = { "application/rss+xml": "/feed.xml" }
 
 // Shared social card (the generated /opengraph-image route, 1200×630).
 // Referenced explicitly so per-page openGraph blocks don't drop it.
@@ -8,6 +9,12 @@ export const ogImage = {
   width: 1200,
   height: 630,
   alt: "NerdsNote — a private online notepad for fast, focused writing",
+}
+
+export const websiteOpenGraph = {
+  type: "website" as const,
+  siteName,
+  images: [ogImage],
 }
 
 export const organizationJsonLd = {
@@ -52,13 +59,14 @@ export const softwareApplicationJsonLd = {
   url: `${siteUrl}/notepad`,
   image: `${siteUrl}/apple-icon.png`,
   description:
-    "Free, private online notepad with local auto-save, dark mode, search, import, export, and optional read-only sharing.",
+    "Free online notepad for private writing with browser autosave, image and chart inserts, file downloads, and optional read-only sharing.",
   isAccessibleForFree: true,
   featureList: [
     "Local auto-save",
     "No account required",
     "Dark mode",
     "Search saved notes",
+    "Add images and charts to notes",
     "Import text and Markdown files",
     "Export plain-text notes",
     "Optional local folder sync",

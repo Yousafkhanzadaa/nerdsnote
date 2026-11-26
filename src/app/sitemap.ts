@@ -3,45 +3,16 @@ import { blogPosts } from "@/lib/blog-posts"
 import { siteUrl } from "@/lib/structured-data"
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const evergreenPages: MetadataRoute.Sitemap = [
-    {
-      url: `${siteUrl}/`,
-      lastModified: "2026-09-12",
-    },
-    {
-      url: `${siteUrl}/notepad`,
-      lastModified: "2026-08-01",
-    },
-    {
-      url: `${siteUrl}/features`,
-      lastModified: "2026-08-01",
-    },
-    {
-      url: `${siteUrl}/about`,
-      lastModified: "2026-08-01",
-    },
-    {
-      url: `${siteUrl}/blog`,
-      lastModified: "2026-09-12",
-    },
-    {
-      url: `${siteUrl}/privacy`,
-      lastModified: "2026-08-01",
-    },
-    {
-      url: `${siteUrl}/terms`,
-      lastModified: "2026-08-01",
-    },
-    {
-      url: `${siteUrl}/contact`,
-      lastModified: "2026-08-01",
-    },
+  // Only the guides track editorial revision dates. Undated entries are valid in a sitemap.
+  const pages = ["/", "/notepad", "/features", "/about", "/privacy", "/terms", "/contact"]
+  const guideDates = blogPosts.map((post) => post.updatedAt).sort()
+  return [
+    ...pages.map((path) => ({ url: `${siteUrl}${path}` })),
+    { url: `${siteUrl}/blog`, lastModified: guideDates.at(-1) },
+    ...blogPosts.map((post) => ({
+      url: `${siteUrl}/blog/${post.slug}`,
+      lastModified: post.updatedAt,
+      images: post.image ? [`${siteUrl}${post.image.src}`] : undefined,
+    })),
   ]
-
-  const blogPages: MetadataRoute.Sitemap = blogPosts.map((post) => ({
-    url: `${siteUrl}/blog/${post.slug}`,
-    lastModified: post.updatedAt,
-  }))
-
-  return [...evergreenPages, ...blogPages]
 }

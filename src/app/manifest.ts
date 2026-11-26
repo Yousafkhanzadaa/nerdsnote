@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "NerdsNote - Free Online Notepad",
     short_name: "NerdsNote",
     description:
-      "A free, private online notepad with local auto-save, offline access, dark mode, search, import, and export.",
+      "A free online notebook with local autosave, dark mode, images, charts, and optional sharing.",
     start_url: "/notepad",
     scope: "/",
     display: "standalone",

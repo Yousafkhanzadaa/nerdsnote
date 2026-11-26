@@ -7,6 +7,7 @@ import {
   FileText,
   HardDrive,
   ImagePlus,
+  Link2,
   Maximize2,
   Moon,
   Search,
@@ -18,21 +19,21 @@ import {
 
 import { SiteFooter, SiteHeader } from "@/components/site-chrome"
 import { JsonLd } from "@/components/json-ld"
-import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
+import { breadcrumbJsonLd, websiteOpenGraph } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
-  title: "NerdsNote Features — Auto-Save, Dark Mode, Offline & Export",
+  title: "NerdsNote Features — Auto-Save, Local Storage and Export",
   description:
-    "Explore NerdsNote's features for private note taking: local auto-save, offline support, dark mode, instant search, file import, export, and distraction-free writing.",
+    "See where NerdsNote saves your notes, how to keep writing when your connection drops, and how to download text, pictures and charts from your notebook.",
   alternates: {
     canonical: "/features",
   },
   openGraph: {
+    ...websiteOpenGraph,
     title: "Features — NerdsNote",
     description:
-      "Private online notepad features: local auto-save, dark mode, file export, private storage, offline access, and more.",
+      "Explore browser auto-save, optional folder storage, images, charts and file downloads in the NerdsNote editor.",
     url: "https://nerdsnote.com/features",
-    images: [ogImage],
   },
 }
 
@@ -40,7 +41,7 @@ const features = [
   {
     title: "Distraction-free writing",
     description:
-      "A clean browser notepad for quick notes, longer drafts, lists, and plain text writing.",
+      "Start with a blank page. Open Format to add headings, lists or tables as your draft takes shape.",
     icon: FileText,
   },
   {
@@ -64,13 +65,14 @@ const features = [
   {
     title: "Automatic saving",
     description:
-      "NerdsNote keeps your current work saved locally as you type.",
+      "Your edits save as you type. Look for “Saved in this browser” below the note, then return in the same browser profile to pick up where you left off.",
+    guide: { href: "/blog/online-notepad-with-autosave", label: "How auto-save works" },
     icon: Zap,
   },
   {
-    title: "Offline support",
+    title: "Writing offline",
     description:
-      "Keep writing in modern browsers after the app loads, even when the connection is unreliable.",
+      "If your connection drops while the notebook is open, you can keep editing and saving locally. Opening the notebook again may need a connection.",
     icon: WifiOff,
   },
   {
@@ -80,9 +82,9 @@ const features = [
     icon: Moon,
   },
   {
-    title: "Full-screen focus",
+    title: "Focus mode",
     description:
-      "Use distraction-free mode when you want the editor to stay out of your way.",
+      "Hide the editor toolbar while you write. Choose “Exit focus” to bring the controls back.",
     icon: Maximize2,
   },
   {
@@ -100,13 +102,20 @@ const features = [
   {
     title: "Export notes",
     description:
-      "Download notes as plain text so your writing stays portable.",
+      "Download a plain-text file for the words. When a note contains a picture or chart, “Download note with images” keeps the visuals for import back into NerdsNote.",
+    guide: { href: "/blog/will-clearing-cache-delete-browser-notes#backup-first", label: "Back up your notes" },
     icon: Download,
   },
   {
-    title: "Optional folder sync",
+    title: "Read-only sharing",
     description:
-      "Connect a local folder in supported browsers when you want file-based note storage.",
+      "Create a link to a copy of one note for one, seven or thirty days. Anyone with the link can read or save that copy. Later edits stay in your notebook.",
+    icon: Link2,
+  },
+  {
+    title: "Save to a local folder",
+    description:
+      "Connect a folder in a supported browser to open its text and Markdown files. Edits save to the linked file, and deleting a connected note also deletes that file.",
     icon: HardDrive,
   },
 ]
@@ -135,13 +144,16 @@ export default function FeaturesPage() {
         </header>
 
         <ul aria-label="Notepad features" className="divide-y divide-border border-y border-border">
-          {features.map(({ title, description, icon: Icon }) => (
+          {features.map(({ title, description, guide, icon: Icon }) => (
             <li key={title} className="grid gap-2.5 py-5 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)] sm:items-baseline sm:gap-x-9 sm:py-6">
               <h2 className="flex items-baseline gap-3 font-serif text-2xl leading-snug font-normal tracking-tight">
                 <Icon className="size-[1.1rem] shrink-0 self-center text-primary" strokeWidth={1.5} aria-hidden="true" />
                 {title}
               </h2>
-              <p className="pl-[1.85rem] leading-7 text-muted-foreground sm:pl-0">{description}</p>
+              <p className="pl-[1.85rem] leading-7 text-muted-foreground sm:pl-0">
+                {description}
+                {guide && <> <Link href={guide.href} className="paper-link underline underline-offset-4">{guide.label}</Link></>}
+              </p>
             </li>
           ))}
         </ul>
