@@ -8,15 +8,18 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { BookOpen, Download, Ellipsis, FolderOpen, Link2, Maximize2, MessageSquare, Minimize2, Moon, NotebookPen, Plus, Search, Sun, Trash2, Type, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useEditor, useEditorState, EditorContent } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
+import { BubbleMenu } from "@tiptap/react/menus"
 import { TaskItem, TaskList } from "@tiptap/extension-list"
 import CharacterCount from "@tiptap/extension-character-count"
 import { Highlight } from "@tiptap/extension-highlight"
 import { TableKit } from "@tiptap/extension-table"
 import { EditorToolbar } from "@/components/editor-toolbar"
+import { HighlightButton, DEFAULT_HIGHLIGHT_COLOR } from "@/components/highlight-button"
+import { toggleNoteHighlight } from "@/lib/note-highlights"
 import { NoteImages } from "@/components/note-images"
 import { ChartDialog } from "@/components/chart-dialog"
 import { NoteImage } from "@/lib/tiptap/note-image"
+import { noteStarterKit } from "@/lib/tiptap/note-starter-kit"
 
 import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
@@ -65,6 +68,9 @@ export default function NotepadClient() {
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
   const [isFormatOpen, setIsFormatOpen] = useState(false)
+  const [highlightColor, setHighlightColor] = useState(DEFAULT_HIGHLIGHT_COLOR)
+  const markerColor = useRef(highlightColor)
+  const writingSpace = useRef<HTMLElement>(null)
   const [mediaDialog, setMediaDialog] = useState<{ noteId: string; type: "image" | "chart" } | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const libraryTrigger = useRef<HTMLButtonElement>(null)
@@ -182,10 +188,14 @@ export default function NotepadClient() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      ...noteStarterKit,
       TaskList,
       TaskItem.configure({ nested: true }),
-      Highlight.configure({ multicolor: true }),
+      Highlight.extend({
+        addKeyboardShortcuts() {
+          return { "Mod-Shift-h": () => toggleNoteHighlight(this.editor, markerColor.current) }
+        },
+      }).configure({ multicolor: true }),
       TableKit.configure({
         table: {
           allowTableNodeSelection: true,
@@ -579,6 +589,7 @@ export default function NotepadClient() {
       })
       return {
         empty: instance?.isEmpty ?? true, hasImages,
+        highlighted: instance?.isActive("highlight") ?? false,
         words: instance?.storage.characterCount?.words() ?? 0,
         characters: instance?.storage.characterCount?.characters() ?? 0,
       }
@@ -684,10 +695,11 @@ export default function NotepadClient() {
       )}
       {activeNote && isFormatOpen && !isDistractFree && !folderBusy && (
         <div id="editor-formatting"><EditorToolbar editor={editor} fontSize={fontSize} onFontSizeChange={setFontSize} onImageAction={() => setMediaDialog({ noteId: activeNote.id, type: "image" })}
+          highlightColor={highlightColor} onHighlightColorChange={color => { markerColor.current = color; setHighlightColor(color) }}
           onChartAction={() => setMediaDialog({ noteId: activeNote.id, type: "chart" })} contained /></div>
       )}
 
-      <main className="scrollbar-theme min-h-0 flex-1 overflow-y-auto" aria-label="Writing space">
+      <main ref={writingSpace} className="scrollbar-theme min-h-0 flex-1 overflow-y-auto" aria-label="Writing space">
         {isStorageReady && (activeNote ? (
           <div className="mx-auto w-full max-w-[47rem] px-6 pt-[clamp(3rem,9vh,7rem)] pb-16 sm:px-12">
             <input
@@ -705,6 +717,17 @@ export default function NotepadClient() {
                 </span>
               )}
               <EditorContent editor={editor} style={{ fontSize }} />
+              {editor && (!isFormatOpen || isDistractFree) && !folderBusy && (
+                <BubbleMenu editor={editor} pluginKey="selectionHighlight"
+                  options={{ placement: "bottom", offset: 8, flip: true, shift: { padding: 8 }, scrollTarget: writingSpace.current ?? undefined }}
+                  shouldShow={({ editor, view, element, state, from, to }) =>
+                    editor.isEditable && (view.hasFocus() || element.contains(document.activeElement)) &&
+                    from < to && !!state.doc.textBetween(from, to).length
+                  }
+                  className="rounded-md border border-border bg-popover text-popover-foreground shadow-md">
+                  <HighlightButton editor={editor} color={highlightColor} pressed={editorDetails?.highlighted ?? false} showLabel />
+                </BubbleMenu>
+              )}
             </div>
           </div>
         ) : (

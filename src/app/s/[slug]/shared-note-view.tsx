@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import DOMPurify from "dompurify"
 import { BookmarkPlus, NotebookPen } from "lucide-react"
+import { HIGHLIGHT_COLORS } from "@/lib/note-highlights"
 import { isSafeNoteImageSrc } from "@/lib/note-images"
 
 interface SharedNoteViewProps {
@@ -30,6 +31,21 @@ export default function SharedNoteView({ title, content, createdAt, expiresAt, o
     const inertDocument = document.createElement("template").content.ownerDocument
     const container = inertDocument.createElement("div")
     container.innerHTML = content
+    // Imported highlights can store the color as an inline style or as RGB.
+    // The reader's stylesheet recognizes palette hex values after sanitization.
+    const swatch = inertDocument.createElement("span").style
+    const palette = new Map<string, string>()
+    for (const { value } of HIGHLIGHT_COLORS) {
+      swatch.backgroundColor = value
+      palette.set(swatch.backgroundColor, value)
+    }
+    container.querySelectorAll("mark").forEach(mark => {
+      swatch.backgroundColor = ""
+      swatch.backgroundColor = mark.getAttribute("data-color") || mark.style.backgroundColor
+      const color = palette.get(swatch.backgroundColor)
+      if (color) mark.setAttribute("data-color", color)
+      else mark.removeAttribute("data-color")
+    })
     container.querySelectorAll("img").forEach(img => {
       if (!isSafeNoteImageSrc(img.getAttribute("src"))) {
         img.remove()

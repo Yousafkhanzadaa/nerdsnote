@@ -11,7 +11,7 @@ Live at [nerdsnote.com](https://nerdsnote.com).
 - **Local-first** — notes are saved to your browser (`localStorage`) automatically as you type.
 - **Optional local folder sync** — on supported desktop browsers, connect a real folder via the
   File System Access API and notes are written as `.txt` files you own.
-- **Rich text editing** — powered by [TipTap](https://tiptap.dev) (headings, lists, checklists, code, quotes).
+- **Rich text editing** — powered by [TipTap](https://tiptap.dev) (headings, lists, checklists, code, quotes). Select a passage in the notebook and choose **Highlight**. Choose a marker color under **Format → More**, or toggle the current marker with **Ctrl+Shift+H** (**⌘⇧H** on Mac).
 - **Images** — insert, paste, or drop a PNG, JPEG, or WebP up to 12 MiB. The browser resizes it locally and embeds it in the note. Connected-folder files, image backups, and shared snapshots include the picture. Plain-text downloads include its description.
 - **Charts** — choose Format → Chart to preview a bar, column, line, pie, donut, or scatter chart. Enter category labels and values, or X and Y measurements for a scatter chart. Inserting it saves a local image with a text description of the data.
 - **Share links** — generate a read-only, expiring public link for a single note. The editor prepares compact image copies on the device before uploading the snapshot.
