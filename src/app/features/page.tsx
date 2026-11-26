@@ -1,9 +1,12 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import {
+  ArrowRight,
+  ChartNoAxesColumn,
   Download,
   FileText,
   HardDrive,
+  ImagePlus,
   Maximize2,
   Moon,
   Search,
@@ -13,8 +16,7 @@ import {
   Zap,
 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { SiteFooter, SiteHeader } from "@/components/site-chrome"
 import { JsonLd } from "@/components/json-ld"
 import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
 
@@ -46,6 +48,18 @@ const features = [
     description:
       "Notes are saved in your browser by default, with no account required to start writing.",
     icon: Shield,
+  },
+  {
+    title: "Images in notes",
+    description:
+      "Add a photo or screenshot from your device, clipboard, or by dragging it onto the page. Your browser prepares smaller image copies when you share.",
+    icon: ImagePlus,
+  },
+  {
+    title: "Charts in notes",
+    description:
+      "Compare categories with bars or columns, follow a trend with a line, see proportions with a pie or donut, or plot two measurements on a scatter chart. Preview your chart as you enter the data.",
+    icon: ChartNoAxesColumn,
   },
   {
     title: "Automatic saving",
@@ -99,90 +113,53 @@ const features = [
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <JsonLd
         data={breadcrumbJsonLd([
           { name: "Home", path: "/" },
           { name: "Features", path: "/features" },
         ])}
       />
-      <header className="border-b border-border">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
-            <span>NerdsNote</span>
-          </Link>
-          <Button size="sm" asChild>
-            <Link href="/notepad" prefetch={false}>Start writing</Link>
-          </Button>
-        </div>
-      </header>
+      <SiteHeader />
 
-      <main>
-        <section className="border-b border-border">
-          <div className="container mx-auto max-w-5xl px-4 py-14">
-            <p className="text-sm font-medium text-primary">NerdsNote features</p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
-              A free online notepad with private, local-first writing tools.
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Write quick notes, draft text, search your saved notes, import
-              files, export your work, and keep writing without an account.
+      <main id="main-content" className="paper-column flex-1 pb-14 sm:pb-20">
+        <header className="pt-12 pb-8 sm:pt-20 sm:pb-12">
+          <p className="text-sm font-medium text-primary">NerdsNote features</p>
+          <h1 className="paper-title mt-3 max-w-[25ch] text-balance">
+            A free online notepad with private, local-first writing tools.
+          </h1>
+          <p className="paper-lead mt-5 max-w-[60ch]">
+            Write quick notes, draft text, search your saved notes, import
+            files, export your work, and keep writing without an account.
+          </p>
+        </header>
+
+        <ul aria-label="Notepad features" className="divide-y divide-border border-y border-border">
+          {features.map(({ title, description, icon: Icon }) => (
+            <li key={title} className="grid gap-2.5 py-5 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)] sm:items-baseline sm:gap-x-9 sm:py-6">
+              <h2 className="flex items-baseline gap-3 font-serif text-2xl leading-snug font-normal tracking-tight">
+                <Icon className="size-[1.1rem] shrink-0 self-center text-primary" strokeWidth={1.5} aria-hidden="true" />
+                {title}
+              </h2>
+              <p className="pl-[1.85rem] leading-7 text-muted-foreground sm:pl-0">{description}</p>
+            </li>
+          ))}
+        </ul>
+
+        <section className="pt-9 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:pt-12">
+          <div>
+            <h2 className="paper-heading">Ready for a clean note taking app?</h2>
+            <p className="mt-2 leading-7 text-muted-foreground">
+              Open the editor and start writing in your browser.
             </p>
           </div>
-        </section>
-
-        <section className="bg-muted/25">
-          <div className="container mx-auto grid max-w-6xl gap-4 px-4 py-12 md:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ title, description, icon: Icon }) => (
-              <Card key={title} className="rounded-md p-6">
-                <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
-                <h2 className="text-xl font-semibold">{title}</h2>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  {description}
-                </p>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <section className="border-t border-border">
-          <div className="container mx-auto flex max-w-6xl flex-col gap-5 px-4 py-12 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">Ready for a clean note taking app?</h2>
-              <p className="mt-2 text-muted-foreground">
-                Open the editor and start writing in your browser.
-              </p>
-            </div>
-            <Button size="lg" asChild>
-              <Link href="/notepad" prefetch={false}>Open NerdsNote</Link>
-            </Button>
-          </div>
+          <Link href="/notepad" prefetch={false} className="paper-link mt-3 inline-flex min-h-11 shrink-0 items-center gap-2 sm:mt-0">
+            Open NerdsNote <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
         </section>
       </main>
 
-      <footer className="border-t border-border">
-        <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <p>NerdsNote - local-first writing in your browser.</p>
-          <nav aria-label="Footer navigation" className="flex flex-wrap gap-4">
-            <Link href="/blog" className="hover:text-foreground">
-              Guides
-            </Link>
-            <Link href="/privacy" className="hover:text-foreground">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-foreground">
-              Terms
-            </Link>
-            <Link href="/contact" className="hover:text-foreground">
-              Contact
-            </Link>
-            <Link href="/" className="hover:text-foreground">
-              Home
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter currentHref="/features" />
     </div>
   )
 }

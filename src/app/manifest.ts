@@ -9,8 +9,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/notepad",
     scope: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#ffffff",
+    background_color: "#f7f5ed",
+    theme_color: "#f7f5ed",
     icons: [
       {
         src: "/web-app-manifest-192x192.png",

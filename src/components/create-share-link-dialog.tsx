@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Dialog } from "radix-ui";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
     Link2,
     Copy,
@@ -17,7 +17,8 @@ import {
     AlertCircle,
     Download,
 } from "lucide-react";
-import type { ExpiryOption, ShareNoteResponse, ShareNoteError } from "@/lib/share-types";
+import { prepareShareContent } from "@/lib/share-images";
+import { MAX_SHARE_REQUEST_BYTES, MAX_SHARE_TITLE_LENGTH, type ExpiryOption, type ShareNoteResponse, type ShareNoteError } from "@/lib/share-types";
 
 interface CreateShareLinkDialogProps {
     isOpen: boolean;
@@ -25,7 +26,7 @@ interface CreateShareLinkDialogProps {
     noteContent: string;
 }
 
-type DialogState = "consent" | "loading" | "success" | "error";
+type DialogState = "consent" | "preparing" | "loading" | "success" | "error";
 
 const EXPIRY_OPTIONS: { value: ExpiryOption; label: string }[] = [
     { value: "1d", label: "1 day" },
@@ -42,19 +43,26 @@ export function CreateShareLinkDialog({
 }: CreateShareLinkDialogProps) {
     const [state, setState] = useState<DialogState>("consent");
     const [expiresIn, setExpiresIn] = useState<ExpiryOption>("7d");
-    const selectedExpiryLabel =
-        EXPIRY_OPTIONS.find((option) => option.value === expiresIn)?.label ?? "7 days";
+    const [title, setTitle] = useState("");
+    const urlInputRef = useRef<HTMLInputElement>(null);
     const [shareUrl, setShareUrl] = useState("");
     const [expiresAt, setExpiresAt] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [copied, setCopied] = useState(false);
     const [shareNotice, setShareNotice] = useState("");
     const qrCodeRef = useRef<SVGSVGElement>(null);
+    const pendingShare = useRef<AbortController | null>(null);
+    useEffect(() => () => { pendingShare.current?.abort(); }, [isOpen]);
 
     if (!isOpen) return null;
 
     const handleClose = () => {
+        if (state === "loading") return;
+        pendingShare.current?.abort();
+        pendingShare.current = null;
         setState("consent");
+        setTitle("");
+        setExpiresIn("7d");
         setError("");
         setShareUrl("");
         setCopied(false);
@@ -63,50 +71,61 @@ export function CreateShareLinkDialog({
     };
 
     const handleCreateLink = async () => {
-        setState("loading");
+        if (pendingShare.current) return;
+        const controller = new AbortController();
+        pendingShare.current = controller;
+        setState("preparing");
         setError("");
         setShareNotice("");
 
+        let content: string;
+        try {
+            content = await prepareShareContent(noteContent, controller.signal);
+        } catch (cause) {
+            if (controller.signal.aborted) return;
+            pendingShare.current = null;
+            setError(cause instanceof Error ? cause.message : "Could not prepare the images for sharing.");
+            setState("error");
+            return;
+        }
+        if (controller.signal.aborted) return;
+        const body = JSON.stringify({ content, expiresIn, title: title.trim() || undefined });
+        if (new TextEncoder().encode(body).byteLength > MAX_SHARE_REQUEST_BYTES) {
+            pendingShare.current = null;
+            setError("This note exceeds the 2 MiB sharing limit. Try sharing fewer images or less text.");
+            setState("error");
+            return;
+        }
+        setState("loading");
         try {
             const response = await fetch("/api/share", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: noteContent, expiresIn }),
+                body,
+                signal: controller.signal,
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                const errorData = data as ShareNoteError;
-                let errorMessage = errorData.error || "Error";
-
-                if (response.status === 413) {
-                    errorMessage = "Note is too large to share (max 50KB)";
-                } else if (response.status === 429) {
-                    errorMessage = "Too many shares. Please wait an hour and try again.";
-                }
-
-                setError(errorMessage);
+                const data: ShareNoteError | null = await response.json().catch(() => null);
+                const fallback = response.status === 413
+                    ? "This note is too large to share. Try fewer images or less text."
+                    : "Could not create a share link. Please try again.";
+                setError(data?.error || fallback);
                 setState("error");
                 return;
             }
 
-            const successData = data as ShareNoteResponse;
+            const successData = await response.json() as ShareNoteResponse;
             setShareUrl(successData.url);
             setExpiresAt(successData.expiresAt);
             setState("success");
 
-            // Auto-copy to clipboard
-            try {
-                await navigator.clipboard.writeText(successData.url);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 3000);
-            } catch {
-                // Clipboard access may fail, that's okay
-            }
         } catch {
+            if (controller.signal.aborted) return;
             setError("Network error. Please check your connection and try again.");
             setState("error");
+        } finally {
+            if (pendingShare.current === controller) pendingShare.current = null;
         }
     };
 
@@ -116,7 +135,9 @@ export function CreateShareLinkDialog({
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
-            // Fallback: select the text
+            urlInputRef.current?.focus();
+            urlInputRef.current?.select();
+            setShareNotice("Select and copy the link to share it.");
         }
     };
 
@@ -250,16 +271,16 @@ export function CreateShareLinkDialog({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-0 shadow-lg animate-in fade-in zoom-in-95 duration-200">
-                {/* Header */}
-                <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 p-4">
-                    <h3 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
-                        <Link2 className="h-5 w-5 shrink-0 text-primary" />
-                        <span className="truncate">{state === "success" ? "Link Created!" : "Create a shareable link?"}</span>
-                    </h3>
-                    <Button variant="ghost" size="sm" onClick={handleClose} className="h-8 w-8 shrink-0 p-0">
-                        <X className="h-4 w-4" />
+        <Dialog.Root open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 z-50 bg-black/35" />
+            <Dialog.Content aria-describedby={undefined} className="fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border bg-card text-card-foreground shadow-lg">
+                <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+                    <Dialog.Title className="font-serif text-2xl">
+                        {state === "success" ? "Your shared note" : "Share this note"}
+                    </Dialog.Title>
+                    <Button variant="ghost" size="icon" disabled={state === "loading"} onClick={handleClose} aria-label="Close share dialog">
+                        <X className="size-4" />
                     </Button>
                 </div>
 
@@ -269,8 +290,17 @@ export function CreateShareLinkDialog({
                     {state === "consent" && (
                         <div className="space-y-4">
                             <p className="text-muted-foreground text-sm leading-relaxed">
-                                This will upload your note to NerdsNote so anyone with the link can view it. The link expires after {selectedExpiryLabel}. We won't track readers. Continue?
+                                {/<img\b/i.test(noteContent) ? "Your browser prepares compact copies of the images before uploading this note. " : "Creating a link uploads a copy of this note. "}Anyone with the link can read or save the shared copy until it expires. Later edits stay in your notebook.
                             </p>
+
+                            <label className="block space-y-2 text-sm font-medium">
+                                <span>Title for readers <span className="font-normal text-muted-foreground">(optional)</span></span>
+                                <input
+                                    type="text" maxLength={MAX_SHARE_TITLE_LENGTH} value={title}
+                                    onChange={(event) => setTitle(event.target.value)}
+                                    className="block h-10 w-full rounded-md border border-input bg-background px-3 font-serif text-base focus-visible:outline-2 focus-visible:outline-ring"
+                                />
+                            </label>
 
                             {/* Expiry selector */}
                             <div className="space-y-2">
@@ -285,6 +315,7 @@ export function CreateShareLinkDialog({
                                             type="button"
                                             variant={expiresIn === option.value ? "default" : "outline"}
                                             size="sm"
+                                            aria-pressed={expiresIn === option.value}
                                             onClick={() => setExpiresIn(option.value)}
                                         >
                                             {option.label}
@@ -307,10 +338,10 @@ export function CreateShareLinkDialog({
                     )}
 
                     {/* Loading State */}
-                    {state === "loading" && (
+                    {(state === "preparing" || state === "loading") && (
                         <div className="flex flex-col items-center justify-center py-8">
                             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                            <p className="text-muted-foreground text-sm">Creating your share link...</p>
+                            <p role="status" className="text-muted-foreground text-sm">{state === "preparing" ? "Preparing the shared copy…" : "Creating your share link…"}</p>
                         </div>
                     )}
 
@@ -318,11 +349,10 @@ export function CreateShareLinkDialog({
                     {state === "success" && (
                         <div className="space-y-4">
                             {/* Success message */}
-                            <div className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 p-3 rounded-md text-sm">
-                                Link created — copied to clipboard. Share it with anyone.
+                            <div className="text-sm text-muted-foreground">
                                 {expiresAt && (
                                     <span className="block mt-1">
-                                        The note will expire on {formatExpiryDate(expiresAt)}.
+                                        This link expires on {formatExpiryDate(expiresAt)}.
                                     </span>
                                 )}
                                 {!expiresAt && (
@@ -334,11 +364,13 @@ export function CreateShareLinkDialog({
                             <div className="flex min-w-0 gap-2">
                                 <input
                                     type="text"
+                                    aria-label="Share link"
+                                    ref={urlInputRef}
                                     readOnly
                                     value={shareUrl}
                                     className="min-w-0 flex-1 rounded-md border border-input bg-muted/50 px-3 py-2 font-mono text-sm"
                                 />
-                                <Button variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
+                                <Button aria-label={copied ? "Link copied" : "Copy link"} variant="outline" size="sm" onClick={handleCopy} className="shrink-0">
                                     {copied ? (
                                         <Check className="h-4 w-4 text-green-600" />
                                     ) : (
@@ -348,8 +380,9 @@ export function CreateShareLinkDialog({
                             </div>
 
                             {/* QR code is rendered locally so the share URL is not sent to a third party. */}
-                            <div className="rounded-lg border border-border bg-muted/30 p-4">
-                                <div className="grid items-center gap-4 sm:grid-cols-[auto_1fr]">
+                            <details className="rounded-lg border border-border p-3">
+                                <summary className="cursor-pointer text-sm font-medium text-primary">QR code</summary>
+                                <div className="mt-3 grid items-center gap-4 sm:grid-cols-[auto_1fr]">
                                     <div className="mx-auto rounded-lg bg-white p-2 shadow-sm">
                                         <QRCodeSVG
                                             ref={qrCodeRef}
@@ -379,7 +412,7 @@ export function CreateShareLinkDialog({
                                         </Button>
                                     </div>
                                 </div>
-                            </div>
+                            </details>
 
                             {/* Share options */}
                             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -406,7 +439,7 @@ export function CreateShareLinkDialog({
                                 </Button>
                                 <Button variant="outline" size="sm" asChild>
                                     <a
-                                        href={`mailto:?subject=${encodeURIComponent("Create a shareable link?")}&body=${encodeURIComponent(`Check out this note: ${shareUrl}`)}`}
+                                        href={`mailto:?subject=${encodeURIComponent("A note for you")}&body=${encodeURIComponent(`Check out this note: ${shareUrl}`)}`}
                                         className="flex items-center gap-2"
                                     >
                                         <Mail className="h-4 w-4" />
@@ -446,7 +479,8 @@ export function CreateShareLinkDialog({
                         </div>
                     )}
                 </div>
-            </Card >
-        </div >
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
     );
 }

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from "vitest"
 import {
   LANDING_DRAFT_HANDOFF_KEY,
   LANDING_DRAFT_STORAGE_KEY,
-  consumeLandingDraftHandoff,
+  completeLandingDraftHandoff,
+  readLandingDraftHandoff,
   landingDraftTitle,
   prepareLandingDraftHandoff,
   saveLandingDraft,
@@ -25,18 +26,29 @@ describe("landing-page draft handoff", () => {
   it("does not consume a draft until the user explicitly continues", () => {
     saveLandingDraft(localStorage, "Keep this preview")
 
-    expect(consumeLandingDraftHandoff(localStorage)).toBeNull()
+    expect(readLandingDraftHandoff(localStorage)).toBeNull()
     expect(localStorage.getItem(LANDING_DRAFT_STORAGE_KEY)).toBe("Keep this preview")
   })
 
-  it("consumes and cleans an explicitly handed-off draft", () => {
-    prepareLandingDraftHandoff(localStorage, "Meeting notes\n- Confirm launch date")
-
-    expect(consumeLandingDraftHandoff(localStorage)).toBe(
-      "Meeting notes\n- Confirm launch date",
-    )
+  it("keeps an old-version draft until the notebook confirms it was saved", () => {
+    const draft = "Meeting notes\n- Confirm launch date"
+    localStorage.setItem(LANDING_DRAFT_STORAGE_KEY, draft)
+    localStorage.setItem(LANDING_DRAFT_HANDOFF_KEY, "true")
+    const handoff = readLandingDraftHandoff(localStorage)!
+    expect(handoff.draft).toBe(draft)
+    expect(readLandingDraftHandoff(localStorage)?.id).toBe(handoff.id)
+    expect(localStorage.getItem(LANDING_DRAFT_STORAGE_KEY)).toBe(draft)
+    completeLandingDraftHandoff(localStorage, handoff)
     expect(localStorage.getItem(LANDING_DRAFT_STORAGE_KEY)).toBeNull()
     expect(localStorage.getItem(LANDING_DRAFT_HANDOFF_KEY)).toBeNull()
+  })
+
+  it("preserves a replacement draft if a previous save finishes later", () => {
+    prepareLandingDraftHandoff(localStorage, "First draft")
+    const first = readLandingDraftHandoff(localStorage)!
+    prepareLandingDraftHandoff(localStorage, "Second draft")
+    completeLandingDraftHandoff(localStorage, first)
+    expect(readLandingDraftHandoff(localStorage)?.draft).toBe("Second draft")
   })
 
   it("derives a compact note title from the first non-empty line", () => {

@@ -5,8 +5,6 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { MessageSquare, Send, X, Loader2, CheckCircle, Check } from "lucide-react"
-import { db } from "@/lib/firebase"
-import { collection, addDoc } from "firebase/firestore"
 
 interface FeedbackDialogProps {
   isOpen: boolean
@@ -31,11 +29,14 @@ export function FeedbackDialog({ isOpen, onClose }: FeedbackDialogProps) {
     setError(null)
 
     try {
+      const [{ db }, { collection, addDoc }] = await Promise.all([
+        import("@/lib/firebase"),
+        import("firebase/firestore"),
+      ])
       await addDoc(collection(db, "nerdsnote"), {
         content: feedback.trim(),
         email: email.trim() || null, // Save email if provided, otherwise null
         timestamp: new Date(),
-        userAgent: navigator.userAgent,
       })
       setIsSuccess(true)
       setFeedback("")

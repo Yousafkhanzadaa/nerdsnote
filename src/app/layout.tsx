@@ -2,8 +2,6 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import {
     ogImage,
     organizationJsonLd,
@@ -96,8 +94,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
     themeColor: [
-        { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-        { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+        { media: "(prefers-color-scheme: light)", color: "#f7f5ed" },
+        { media: "(prefers-color-scheme: dark)", color: "#1e221d" },
     ],
 }
 
@@ -132,8 +130,6 @@ export default function RootLayout({
             </head>
             <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
                 {children}
-                <Analytics />
-                <SpeedInsights />
             </body>
         </html>
     )

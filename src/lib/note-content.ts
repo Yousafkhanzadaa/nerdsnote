@@ -1,3 +1,5 @@
+import { isSafeNoteImageSrc } from "@/lib/note-images"
+
 const BLOCK_TAGS = /<\/(p|div|h[1-6]|blockquote|pre|li|ul|ol|table|thead|tbody|tfoot|tr)>/gi
 const BREAK_TAGS = /<br\s*\/?>/gi
 const LIST_ITEM_TAG = /<li\b([^>]*)>/gi
@@ -5,6 +7,9 @@ const PARAGRAPH_OPEN_TAG = /<p\b([^>]*)>/gi
 const TABLE_TAG = /<table\b[^>]*>([\s\S]*?)<\/table>/gi
 const TABLE_ROW_TAG = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi
 const TABLE_CELL_TAG = /<(?:td|th)\b[^>]*>([\s\S]*?)<\/(?:td|th)>/gi
+// Respect quoted attributes so a literal ">" in an image description is retained.
+const IMAGE_TAG = /<img\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi
+const IMAGE_ATTRIBUTE = /\s+([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g
 const HTML_TAGS = /<[^>]+>/g
 const RICH_TEXT_TAGS = /(p|div|h[1-6]|blockquote|pre|code|ul|ol|li|strong|b|em|i|u|s|strike|span|mark|a|label|input|table|thead|tbody|tfoot|tr|th|td|colgroup|col)/i
 const RICH_TEXT_CLOSING_TAGS = /<\/(p|div|h[1-6]|blockquote|pre|code|ul|ol|li|strong|b|em|i|u|s|strike|span|mark|a|label|table|thead|tbody|tfoot|tr|th|td|colgroup)>/i
@@ -20,11 +25,36 @@ const HTML_ENTITIES: Record<string, string> = {
   "&nbsp;": " ",
 }
 
+function isEmbeddedImage(attributes: string): boolean {
+  const input = attributes.trimEnd().replace(/\/$/, "").trimEnd()
+  const attribute = /\s+(src|alt|title)\s*=\s*(?:"([^"]*)"|'([^']*)')/iy
+  const names = new Set<string>()
+  let src: string | undefined
+  while (attribute.lastIndex < input.length) {
+    const match = attribute.exec(input)
+    if (!match) return false
+    const name = match[1].toLowerCase()
+    if (names.has(name)) return false
+    names.add(name)
+    if (name === "src") src = match[2] ?? match[3]
+  }
+  return isSafeNoteImageSrc(src)
+}
+
 export function isRichTextHtml(content: string): boolean {
-  const trimmedContent = content.trim()
+  let trimmedContent = content.trim()
 
   if (!trimmedContent.startsWith("<")) {
     return false
+  }
+
+  if (/^<img\b/i.test(trimmedContent)) {
+    let imagesAreSafe = true
+    trimmedContent = trimmedContent.replace(IMAGE_TAG, (_, attributes: string) => {
+      imagesAreSafe = imagesAreSafe && isEmbeddedImage(attributes)
+      return ""
+    }).trim()
+    if (!trimmedContent) return imagesAreSafe
   }
 
   return new RegExp(`<${RICH_TEXT_TAGS.source}\\b`, "i").test(trimmedContent)
@@ -95,7 +125,17 @@ export function richTextToPlainText(content: string): string {
     return content.replace(/\r\n?/g, "\n")
   }
 
-  const withTableText = content.replace(TABLE_TAG, (_, tableContent: string) =>
+  const withImageDescriptions = content.replace(IMAGE_TAG, (_, attributes: string) => {
+    for (const match of attributes.matchAll(IMAGE_ATTRIBUTE)) {
+      if (match[1].toLowerCase() !== "alt") continue
+      const alt = (match[2] ?? match[3] ?? match[4] ?? "").trim()
+      if (!alt || /data:image\//i.test(alt)) break
+      const description = alt.replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      return `[Image: ${description}]\n`
+    }
+    return "[Image]\n"
+  })
+  const withTableText = withImageDescriptions.replace(TABLE_TAG, (_, tableContent: string) =>
     tableHtmlToPlainText(tableContent),
   )
 

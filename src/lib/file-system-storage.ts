@@ -1,5 +1,4 @@
-
-import { get, set, del } from 'idb-keyval';
+import { delMany, getMany, setMany, update } from 'idb-keyval';
 import { normalizeNoteContent } from '@/lib/note-content';
 
 export interface Note {
@@ -10,287 +9,305 @@ export interface Note {
 }
 
 const DIRECTORY_HANDLE_KEY = 'nerds-note-directory-handle';
+const FILE_INDEX_KEY = 'nerds-note-directory-index';
+
+interface FileRecord {
+    id: string;
+    title: string;
+    filename: string;
+}
+
+interface FileIndex {
+    directory: FileSystemDirectoryHandle;
+    directoryId: string;
+    revision: number;
+    files: FileRecord[];
+    removedIds: string[];
+}
+
+interface ScannedFile extends FileRecord {
+    handle: FileSystemFileHandle;
+    text: string;
+}
+
+function hasName(error: unknown, name: string) {
+    return typeof error === 'object' && error !== null && 'name' in error && error.name === name;
+}
 
 export class FileSystemStorage {
-    private directoryHandle: FileSystemDirectoryHandle | null = null;
+    private index: FileIndex | null = null;
+    private files = new Map<string, ScannedFile>();
+    private removedIds = new Set<string>();
+    private pending = Promise.resolve();
+    private scanned = false;
+    private indexNeedsSave = false;
 
-    // Track currently managed filenames to help with sync
-    private managedFiles: Set<string> = new Set();
+    // Filename allocation, rename, delete and folder switches must finish in order.
+    private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+        const result = this.pending.then(operation);
+        this.pending = result.then(() => {}, () => {});
+        return result;
+    }
 
-    // Authoritative mapping of note id -> on-disk filename. This lets us rename
-    // and delete the correct file even when two notes share a title, instead of
-    // resolving the filename from the (non-unique) title every time.
-    private fileNames: Map<string, string> = new Map();
-
-    /**
-     * Checks if the File System Access API is supported in this browser.
-     */
     static isSupported(): boolean {
         return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
     }
 
-    /**
-     * Tries to load a previously saved directory handle from IndexedDB.
-     */
+    private async indexFor(directory: FileSystemDirectoryHandle, stored?: FileIndex): Promise<FileIndex> {
+        if (stored && await directory.isSameEntry(stored.directory)) {
+            if (this.index?.directoryId === stored.directoryId && this.index.revision === stored.revision) {
+                return this.index;
+            }
+            return { ...stored, directory };
+        }
+        if (this.index && await directory.isSameEntry(this.index.directory)) return this.index;
+        return {
+            directory,
+            directoryId: crypto.randomUUID(),
+            revision: 0,
+            files: [],
+            removedIds: [],
+        };
+    }
+
+    private useIndex(index: FileIndex | null) {
+        if (index === this.index) return;
+        this.index = index;
+        this.files.clear();
+        this.removedIds = new Set(index?.removedIds);
+        this.scanned = false;
+        this.indexNeedsSave = false;
+    }
+
     async loadHandle(): Promise<boolean> {
-        try {
-            const handle = await get<FileSystemDirectoryHandle>(DIRECTORY_HANDLE_KEY);
-            if (handle) {
-                // Verify permissions - we might need to request them again
-                // but we can't request 'readwrite' immediately without user gesture usually.
-                // We'll return true and let the UI prompt if needed.
-                this.directoryHandle = handle;
-                return true;
-            }
-        } catch (error) {
-            console.error('Failed to load directory handle:', error);
-        }
-        return false;
+        return this.enqueue(async () => {
+            // The original version saved only a directory handle under the first key.
+            const [directory, index] = await getMany([DIRECTORY_HANDLE_KEY, FILE_INDEX_KEY]) as
+                [FileSystemDirectoryHandle | undefined, FileIndex | undefined];
+            this.useIndex(directory ? await this.indexFor(directory, index) : null);
+            return !!directory;
+        });
     }
 
-    /**
-     * prompts the user to select a directory and saves the handle.
-     */
-    async connectDirectory(): Promise<void> {
+    async connectDirectory(): Promise<boolean> {
+        let directory: FileSystemDirectoryHandle;
         try {
-            const handle = await window.showDirectoryPicker({
-                mode: 'readwrite',
-                id: 'nerds-note-storage', // remembers the directory preference
-            });
-            this.directoryHandle = handle;
-            await set(DIRECTORY_HANDLE_KEY, handle);
+            // Start the picker synchronously while the user gesture is active.
+            directory = await window.showDirectoryPicker({ mode: 'readwrite', id: 'nerds-note-storage' });
         } catch (error) {
-            if ((error as Error).name !== 'AbortError') {
-                console.error('Failed to connect directory:', error);
-                throw error;
-            }
+            if (hasName(error, 'AbortError')) return false;
+            throw error;
         }
+        return this.enqueue(async () => {
+            const [index] = await getMany<FileIndex | undefined>([FILE_INDEX_KEY]);
+            const next = await this.indexFor(directory, index);
+            await setMany([[DIRECTORY_HANDLE_KEY, directory], [FILE_INDEX_KEY, next]]);
+            this.useIndex(next);
+            return true;
+        });
     }
 
-    /**
-     * Disconnects the current directory handle.
-     */
     async disconnectDirectory(): Promise<void> {
-        this.directoryHandle = null;
-        this.managedFiles.clear();
-        this.fileNames.clear();
-        await del(DIRECTORY_HANDLE_KEY);
+        return this.enqueue(async () => {
+            const [selected] = await getMany<FileSystemDirectoryHandle | undefined>([DIRECTORY_HANDLE_KEY]);
+            if (selected && this.index && await selected.isSameEntry(this.index.directory)) {
+                await delMany([DIRECTORY_HANDLE_KEY, FILE_INDEX_KEY]);
+            }
+            this.useIndex(null);
+        });
     }
 
-    /**
-     * Verifies if we have permission to read/write to the directory.
-     */
     async verifyPermission(mode: 'read' | 'readwrite' = 'readwrite'): Promise<boolean> {
-        if (!this.directoryHandle) return false;
-
-        // Check if we already have permission
-        if ((await this.directoryHandle.queryPermission({ mode })) === 'granted') {
-            return true;
-        }
-
-        // Request permission
-        if ((await this.directoryHandle.requestPermission({ mode })) === 'granted') {
-            return true;
-        }
-
-        return false;
+        const directory = this.index?.directory;
+        if (!directory) return false;
+        return await directory.queryPermission({ mode }) === 'granted'
+            || await directory.requestPermission({ mode }) === 'granted';
     }
 
-    /**
-     * Checks current permission state without triggering a browser prompt.
-     */
     async hasPermission(mode: 'read' | 'readwrite' = 'readwrite'): Promise<boolean> {
-        if (!this.directoryHandle) return false;
-
-        try {
-            return (await this.directoryHandle.queryPermission({ mode })) === 'granted';
-        } catch (error) {
-            console.error('Failed to query directory permission:', error);
-            return false;
-        }
+        return await this.index?.directory.queryPermission({ mode }) === 'granted';
     }
 
-    /**
-     * Gets the name of the connected directory.
-     */
     getDirectoryName(): string | null {
-        return this.directoryHandle ? this.directoryHandle.name : null;
+        return this.index?.directory.name ?? null;
     }
 
-    /**
-     * Sanitize a title into a valid base filename (without disambiguation).
-     */
-    private getFilename(title: string): string {
-        // Replace invalid characters with - and trim
-        // Invalid: / \ : * ? " < > |
-        const safeTitle = title.replace(/[\\/:*?"<>|]/g, '-').trim();
-        const filename = safeTitle.length > 0 ? safeTitle : 'Untitled Note';
-        return `${filename}.txt`;
+    wasRemoved(id: string): boolean {
+        return this.removedIds.has(id);
     }
 
-    /**
-     * Resolves the filename to write this note to, avoiding collisions with a
-     * *different* note's file. A note keeps writing to the filename it already
-     * owns; new collisions get a numeric suffix (e.g. "Notes (2).txt") so we
-     * never overwrite another note's content.
-     */
-    private async resolveFilename(note: Note): Promise<string> {
-        const desired = this.getFilename(note.title);
+    private async storeIndex() {
+        if (!this.index) return;
+        const current = this.index;
+        const files = Array.from(this.files.values(), ({ id, title, filename }) => ({ id, title, filename }));
+        const next = { ...current, files, removedIds: [...this.removedIds], revision: current.revision + 1 };
+        this.indexNeedsSave = true;
+        await update<FileIndex>(FILE_INDEX_KEY, stored => {
+            if (stored && (stored.directoryId !== current.directoryId || stored.revision !== current.revision)) {
+                throw new Error('Folder information changed in another tab. Reopen the folder to continue.');
+            }
+            return next;
+        });
+        this.index = next;
+        this.indexNeedsSave = false;
+    }
 
-        // Already own this exact name (no rename) — reuse it.
-        if (this.fileNames.get(note.id) === desired) {
-            return desired;
+    private async checkConnection() {
+        const [selected, stored] = await getMany([DIRECTORY_HANDLE_KEY, FILE_INDEX_KEY]) as
+            [FileSystemDirectoryHandle | undefined, FileIndex | undefined];
+        const index = this.index;
+        if (!index || !selected || !await selected.isSameEntry(index.directory) ||
+            (stored && (index.directoryId !== stored.directoryId || index.revision !== stored.revision))) {
+            throw new Error('The connected folder changed in another tab. Reopen the folder to continue.');
         }
-
-        const dotIndex = desired.lastIndexOf('.');
-        const stem = desired.slice(0, dotIndex);
-        const ext = desired.slice(dotIndex);
-
-        let candidate = desired;
-        let counter = 2;
-        while (
-            this.isFilenameOwnedByOther(candidate, note.id) ||
-            (await this.fileExistsUnowned(candidate, note.id))
-        ) {
-            candidate = `${stem} (${counter})${ext}`;
-            counter++;
-        }
-        return candidate;
+        if (this.indexNeedsSave) await this.storeIndex();
     }
 
-    /** True if a different note already maps to this filename. */
-    private isFilenameOwnedByOther(filename: string, ownId: string): boolean {
-        for (const [id, name] of this.fileNames) {
-            if (id !== ownId && name === filename) return true;
+    private async scan(): Promise<Note[]> {
+        if (!this.index) return [];
+        const { directory, directoryId } = this.index;
+        const recorded = new Map(this.index.files.map((record) => [record.filename, record]));
+        const ids = new Set([...this.removedIds, ...this.index.files.map((record) => record.id)]);
+        const scanned = new Map<string, ScannedFile>();
+        const notes: Note[] = [];
+        let indexChanged = false;
+        for await (const entry of directory.values()) {
+            if (entry.kind !== 'file' || !/\.(txt|md)$/i.test(entry.name)) continue;
+            const handle = entry as FileSystemFileHandle;
+            const file = await handle.getFile();
+            const text = await file.text();
+            let record = recorded.get(entry.name);
+            if (!record || this.wasRemoved(record.id)) {
+                indexChanged = true;
+                const candidate = `file:${directoryId}:${entry.name}`;
+                record = {
+                    id: ids.has(candidate) ? crypto.randomUUID() : candidate,
+                    filename: entry.name,
+                    title: entry.name.replace(/\.(txt|md)$/i, ''),
+                };
+            }
+            ids.add(record.id);
+            scanned.set(record.id, { ...record, handle, text });
+            notes.push({
+                id: record.id, title: record.title,
+                content: normalizeNoteContent(text), lastModified: new Date(file.lastModified),
+            });
         }
-        return false;
+        // A read failure leaves the last complete scan intact.
+        for (const record of recorded.values()) {
+            if (!scanned.has(record.id)) this.removedIds.add(record.id);
+        }
+        this.files = scanned;
+        if (indexChanged || scanned.size !== recorded.size || this.indexNeedsSave) {
+            try {
+                await this.storeIndex();
+            } catch {
+                // The file contents are still readable if IndexedDB rejects an
+                // upgrade. Mutations must retry the index before touching disk.
+            }
+        }
+        this.scanned = true;
+        return notes.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
     }
 
-    /** True if the file exists on disk but isn't owned by this note. */
-    private async fileExistsUnowned(filename: string, ownId: string): Promise<boolean> {
-        if (!this.directoryHandle) return false;
-        if (this.fileNames.get(ownId) === filename) return false;
+    loadNotes(): Promise<Note[]> {
+        return this.enqueue(() => this.scan());
+    }
 
-        try {
-            await this.directoryHandle.getFileHandle(filename, { create: false });
-            return true;
-        } catch (error) {
-            if ((error as DOMException).name === 'NotFoundError') return false;
-            throw error;
+    private async availableName(directory: FileSystemDirectoryHandle, title: string, extension: string) {
+        const stem = title.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Untitled Note';
+        let count = 1;
+        for (;;) {
+            const filename = count === 1 ? `${stem}${extension}` : `${stem} (${count})${extension}`;
+            try {
+                await directory.getFileHandle(filename);
+            } catch (error) {
+                if (hasName(error, 'NotFoundError')) return filename;
+                // A subdirectory also occupies this name.
+                if (!hasName(error, 'TypeMismatchError')) throw error;
+            }
+            count++;
         }
     }
 
-    /** Removes a file from disk and forgets any note that mapped to it. */
-    private async removeFile(filename: string): Promise<void> {
-        if (!this.directoryHandle) return;
+    private async checkOriginal(directory: FileSystemDirectoryHandle, original: ScannedFile) {
+        const current = await directory.getFileHandle(original.filename);
+        const text = await (await current.getFile()).text();
+        if (!await current.isSameEntry(original.handle) || text !== original.text) {
+            throw new Error('The file changed outside NerdsNote. Reopen the folder to review both versions.');
+        }
+    }
 
-        try {
-            await this.directoryHandle.removeEntry(filename);
-        } catch (error) {
-            // If file doesn't exist, ignore
-            if ((error as DOMException).name !== 'NotFoundError') {
+    saveNote(note: Note): Promise<void> {
+        return this.enqueue(async () => {
+            const directory = this.index?.directory;
+            if (!directory) throw new Error('No directory connected');
+            if (!this.scanned) await this.scan();
+            await this.checkConnection();
+            if (this.wasRemoved(note.id)) throw new Error('This file was removed from the folder.');
+            const original = this.files.get(note.id);
+            if (original) await this.checkOriginal(directory, original);
+
+            const content = normalizeNoteContent(note.content);
+            const sameContent = original && normalizeNoteContent(original.text) === content;
+            const sameName = original && original.title === note.title;
+            if (sameContent && sameName) return;
+
+            const extension = original?.filename.match(/\.(txt|md)$/i)?.[0] ?? '.txt';
+            const filename = sameName ? original.filename : await this.availableName(directory, note.title, extension);
+            const handle = sameName ? original.handle : await directory.getFileHandle(filename, { create: true });
+            const text = sameContent ? original.text : content;
+            const saved = { id: note.id, title: note.title, filename, handle, text: '' };
+            try {
+                if (!sameName) await this.checkOriginal(directory, saved);
+                const writable = await handle.createWritable();
+                try {
+                    await writable.write(text);
+                    // Writes are staged until close. Recheck before committing them.
+                    await this.checkOriginal(directory, sameName ? original : saved);
+                    await writable.close();
+                } catch (error) {
+                    await writable.abort().catch(() => {});
+                    throw error;
+                }
+                saved.text = text;
+                if (original && !sameName) {
+                    await this.checkOriginal(directory, original);
+                    await directory.removeEntry(original.filename);
+                }
+            } catch (error) {
+                if (!sameName) {
+                    // A failed rename leaves the original in place. Remove our new
+                    // file only if nobody has changed or replaced it in the meantime.
+                    await this.checkOriginal(directory, saved)
+                        .then(() => directory.removeEntry(filename))
+                        .catch(() => {});
+                }
                 throw error;
             }
-        }
-
-        this.managedFiles.delete(filename);
-        for (const [id, name] of this.fileNames) {
-            if (name === filename) this.fileNames.delete(id);
-        }
+            this.files.set(note.id, saved);
+            if (!sameName) await this.storeIndex();
+        });
     }
 
-    /**
-     * Saves a note to the file system. Handles renames (removing the stale file)
-     * and same-title collisions internally via the id -> filename map.
-     */
-    async saveNote(note: Note): Promise<void> {
-        if (!this.directoryHandle) throw new Error('No directory connected');
-
-        const filename = await this.resolveFilename(note);
-        const previous = this.fileNames.get(note.id);
-        const content = normalizeNoteContent(note.content);
-
-        try {
-            const fileHandle = await this.directoryHandle.getFileHandle(filename, { create: true });
-            const writable = await fileHandle.createWritable();
-
-            await writable.write(content);
-            await writable.close();
-
-            // A rename moved this note to a new filename — drop the old file.
-            if (previous && previous !== filename) {
-                await this.removeFile(previous);
+    deleteNote(noteId: string): Promise<void> {
+        return this.enqueue(async () => {
+            const directory = this.index?.directory;
+            if (!directory) return;
+            if (!this.scanned) await this.scan();
+            await this.checkConnection();
+            const original = this.files.get(noteId);
+            if (!original) return;
+            try {
+                await this.checkOriginal(directory, original);
+                await directory.removeEntry(original.filename);
+            } catch (error) {
+                if (!hasName(error, 'NotFoundError')) throw error;
             }
-
-            this.fileNames.set(note.id, filename);
-            this.managedFiles.add(filename);
-        } catch (error) {
-            console.error(`Failed to save note ${note.id}:`, error);
-            throw error;
-        }
-    }
-
-    /**
-     * Deletes the file backing a note, identified by its id. Renames are handled
-     * by saveNote, so callers only need this for actual deletions.
-     */
-    async deleteNote(noteId: string): Promise<void> {
-        if (!this.directoryHandle) return;
-
-        const filename = this.fileNames.get(noteId);
-        if (!filename) return;
-
-        try {
-            await this.removeFile(filename);
-        } catch (error) {
-            console.error(`Failed to delete note ${noteId}:`, error);
-            throw error;
-        }
-    }
-
-    /**
-     * Loads all txt/md files from the directory as Notes.
-     */
-    async loadNotes(): Promise<Note[]> {
-        if (!this.directoryHandle) return [];
-
-        try {
-            const notes: Note[] = [];
-            this.managedFiles.clear();
-            this.fileNames.clear();
-
-            // @ts-ignore - values() iterator support varies in TS types
-            for await (const entry of this.directoryHandle.values()) {
-                if (entry.kind === 'file' && (entry.name.endsWith('.txt') || entry.name.endsWith('.md'))) {
-                    try {
-                        const fileHandle = entry as FileSystemFileHandle;
-                        const file = await fileHandle.getFile();
-                        const text = await file.text();
-
-                        // Use filename as title (remove extension)
-                        const title = entry.name.replace(/\.(txt|md)$/, '');
-
-                        this.managedFiles.add(entry.name);
-                        this.fileNames.set(title, entry.name);
-
-                        notes.push({
-                            id: title, // Use title as ID for file-based notes
-                            title: title,
-                            content: normalizeNoteContent(text),
-                            lastModified: new Date(file.lastModified)
-                        });
-                    } catch (err) {
-                        console.error('Error reading file:', entry.name, err);
-                    }
-                }
-            }
-
-            // Sort by last modified descending
-            return notes.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
-        } catch (error) {
-            console.error('Failed to load notes from directory:', error);
-            throw error;
-        }
+            this.files.delete(noteId);
+            this.removedIds.add(noteId);
+            await this.storeIndex();
+        });
     }
 }
 

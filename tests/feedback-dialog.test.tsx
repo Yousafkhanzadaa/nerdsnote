@@ -40,12 +40,11 @@ describe("feedback dialog", () => {
     expect(collectionMock).toHaveBeenCalledWith(dbMock, "nerdsnote")
     expect(addDocMock).toHaveBeenCalledWith(
       feedbackCollection,
-      expect.objectContaining({
+      {
         content: "The editor feels great.",
         email: "reader@example.com",
         timestamp: expect.any(Date),
-        userAgent: navigator.userAgent,
-      }),
+      },
     )
     expect(await screen.findByText("Your feedback has been received.")).toBeTruthy()
   })

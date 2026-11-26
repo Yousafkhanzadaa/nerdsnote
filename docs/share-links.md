@@ -4,15 +4,17 @@ This document covers the shareable note links feature, including setup, environm
 
 ## Overview
 
-The shareable links feature allows users to create public, read-only links to their notes. Notes are stored in Vercel KV (Redis-compatible) with configurable expiry times.
+Sharing publishes a read-only snapshot in Vercel KV (Redis-compatible). An optional title of up to 120 characters is visible to readers. The notebook title stays local. Anyone with the URL can read or save the shared copy.
 
 **Key Features:**
 - One-click "Create Link" from the editor
 - Short URLs: `https://<site>/s/<slug>`
-- Configurable expiry: 1 day, 7 days (default), 30 days, or never
+- Configurable expiry: 1 day, 7 days (default), 30 days, or never (API only)
 - Read-only public page with OG meta tags for social previews
 - Rate limiting: 20 shares per hour per IP
-- Size limit: 50KB per note
+- Notes can contain embedded PNG, JPEG, and WebP images, including notes with only images.
+- On link creation, the editor redraws each image on the device. The shared copy is at most 960 pixels on its longest edge and 80 KiB per image before base64 encoding. Image-heavy notes may use smaller copies to fit the request limit. Charts include their labels and values in the image description. Local notes and folder backups keep their saved images.
+- Each embedded image can be up to 512 KiB before base64 encoding. The UTF-8 JSON request can be up to 2 MiB. Note text and formatting, including image descriptions, can use up to 50 KiB.
 
 ## Architecture
 
@@ -24,7 +26,7 @@ The shareable links feature allows users to create public, read-only links to th
 │    └── CreateShareLinkDialog                                │
 │         • Consent modal with expiry selection               │
 │         • POST /api/share → receives URL                    │
-│         • Auto-copy to clipboard                            │
+│         • Copy link or share QR code                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -34,13 +36,13 @@ The shareable links feature allows users to create public, read-only links to th
 │  POST /api/share                                            │
 │    • Validate content (size, empty)                         │
 │    • Check rate limit (per IP)                              │
-│    • Generate slug with nanoid(8)                           │
-│    • Store in Vercel KV with TTL                            │
+│    • Generate a 21-character Nano ID                        │
+│    • Store in KV using SET NX and optional TTL              │
 │    • Return { url, slug, expiresAt }                        │
 ├─────────────────────────────────────────────────────────────┤
 │  GET /api/share/[slug]                                      │
 │    • Fetch note from KV                                     │
-│    • Return JSON { content, createdAt, expiresAt }          │
+│    • Return content, optional title, and timestamps         │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -49,7 +51,7 @@ The shareable links feature allows users to create public, read-only links to th
 ├─────────────────────────────────────────────────────────────┤
 │  /s/[slug]/page.tsx                                         │
 │    • Server-side fetch from KV                              │
-│    • Generate OG meta tags (title, description)             │
+│    • Use generic social previews                            │
 │    • Render read-only SharedNoteView                        │
 │    • Handle 404 with not-found.tsx                          │
 └─────────────────────────────────────────────────────────────┘
@@ -117,18 +119,19 @@ curl -X POST https://nerdsnote.com/api/share \
   -d '{"content": "Hello, world!", "expiresIn": "7d"}'
 
 # Expected response:
-# {"ok":true,"url":"https://nerdsnote.com/s/abc12345","slug":"abc12345","expiresAt":"2026-02-13T18:00:00.000Z"}
+# {"ok":true,"url":"https://nerdsnote.com/s/V1StGXR8_Z5jdHi6B-myT","slug":"V1StGXR8_Z5jdHi6B-myT","expiresAt":"2026-02-13T18:00:00.000Z"}
 ```
 
 ### Manual Verification Checklist
 
 - [ ] Create note → Click "Create Link" → Consent modal appears
-- [ ] Select expiry → Click "Create Link" → URL copied to clipboard
+- [ ] Select expiry → Click "Create Link" → Copy the URL using the copy button
 - [ ] Open `/s/<slug>` → Read-only note page displays
-- [ ] Share link in Slack/Discord → OG preview shows title and description
-- [ ] Wait for expiry or delete key → 404 page with CTA appears
+- [ ] Share link in Slack/Discord → OG preview shows generic text
+- [ ] Wait for expiry or delete key → the unavailable-note page appears
 - [ ] Send 21 requests in 1 hour → 429 rate limit response
-- [ ] Send >50KB content → 413 size limit response
+- [ ] Share an image-only note and verify the image appears in the reader.
+- [ ] Send more than 50 KiB of text or more than 2 MiB of JSON and verify a 413 response.
 
 ## File Locations
 
@@ -173,8 +176,10 @@ To restore, revert the file deletions and redeploy.
 
 ## Security Considerations
 
-1. **XSS Prevention**: Notes are rendered as escaped plain text using `<pre>` with HTML entity encoding
+1. **XSS Prevention**: The reader sanitizes rich text with a DOMPurify allowlist. React renders the reader-facing title as text.
 2. **Rate Limiting**: 20 shares per hour per IP via KV counter with TTL
-3. **Size Limit**: 50KB maximum note size enforced server-side
-4. **No Content Logging**: Only metadata (slug, size) is logged, never note content
+3. **Embedded images**. The API parses the HTML and validates each embedded raster source. The reader filters image sources before displaying the note and strips alternative image URLs. Image bytes are included in the shared snapshot.
+4. **No Content Logging**: The share handlers omit note content, bearer tokens, and raw storage errors from application logs.
 5. **Auto-Expiry**: Notes expire by default (7 days) to limit data retention
+
+Existing eight-character links still resolve. Shared responses request private, no-store caching. The reader uses generic social metadata and a no-referrer policy.

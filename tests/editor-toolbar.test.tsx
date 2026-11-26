@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 import { Editor } from "@tiptap/core"
 import { TableKit } from "@tiptap/extension-table"
@@ -26,7 +26,7 @@ afterEach(() => {
   editors.splice(0).forEach((editor) => editor.destroy())
 })
 
-describe("editor toolbar indentation", () => {
+describe("editor toolbar", () => {
   it("indents the current paragraph when the toolbar button is clicked", () => {
     const editor = new Editor({
       content: "<p>Paragraph</p>",
@@ -36,6 +36,7 @@ describe("editor toolbar indentation", () => {
     editor.commands.setTextSelection(2)
     render(<EditorToolbar editor={editor} />)
 
+    fireEvent.click(screen.getByRole("button", { name: "More formatting" }))
     const indentButton = screen.getByRole("button", { name: "Indent paragraph" })
     expect(indentButton.hasAttribute("disabled")).toBe(false)
 
@@ -52,13 +53,12 @@ describe("editor toolbar indentation", () => {
     editors.push(editor)
     render(<EditorToolbar editor={editor} />)
 
-    fireEvent.pointerDown(screen.getByTitle("Insert table"), {
-      button: 0,
-      ctrlKey: false,
-    })
-    fireEvent.change(screen.getByLabelText("Rows"), { target: { value: "5" } })
-    fireEvent.change(screen.getByLabelText("Columns"), { target: { value: "7" } })
-    fireEvent.click(screen.getAllByRole("button", { name: "Insert table" }).at(-1)!)
+    fireEvent.click(screen.getByRole("button", { name: "More formatting" }))
+    fireEvent.click(screen.getByRole("button", { name: "Insert table" }))
+    const dialog = within(screen.getByRole("dialog", { name: "Insert table" }))
+    fireEvent.change(dialog.getByRole("spinbutton", { name: "Rows" }), { target: { value: "5" } })
+    fireEvent.change(dialog.getByRole("spinbutton", { name: "Columns" }), { target: { value: "7" } })
+    fireEvent.click(dialog.getByRole("button", { name: "Insert table" }))
 
     expect(countNodes(editor, "table")).toBe(1)
     expect(countNodes(editor, "tableRow")).toBe(5)
@@ -66,7 +66,7 @@ describe("editor toolbar indentation", () => {
     expect(countNodes(editor, "tableCell")).toBe(28)
   })
 
-  it("keeps independent end content outside the scrolling tools region", () => {
+  it("toggles additional tools while keeping primary actions and end content accessible", () => {
     const editor = new Editor({
       content: "<p>Paragraph</p>",
       extensions: [StarterKit, ParagraphIndent],
@@ -80,10 +80,21 @@ describe("editor toolbar indentation", () => {
     )
 
     const exitButton = screen.getByRole("button", { name: "Exit Focus Mode" })
-    const independentRegion = exitButton.parentElement
-    const scrollingToolsRegion = independentRegion?.previousElementSibling
+    const toggle = screen.getByRole("button", { name: "More formatting" })
+    const panel = document.getElementById(toggle.getAttribute("aria-controls")!)!
 
-    expect(scrollingToolsRegion?.classList.contains("overflow-x-auto")).toBe(true)
-    expect(scrollingToolsRegion?.contains(exitButton)).toBe(false)
+    expect(panel.hidden).toBe(true)
+    expect(toggle.getAttribute("aria-expanded")).toBe("false")
+    expect(screen.queryByRole("button", { name: "Indent paragraph" })).toBeNull()
+    expect(screen.getByRole("button", { name: /^Bold/ })).toBeTruthy()
+    expect(panel.contains(exitButton)).toBe(false)
+
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute("aria-expanded")).toBe("true")
+    expect(panel.contains(screen.getByRole("button", { name: "Indent paragraph" }))).toBe(true)
+
+    fireEvent.click(toggle)
+    expect(panel.hidden).toBe(true)
+    expect(screen.getByRole("button", { name: "Exit Focus Mode" })).toBe(exitButton)
   })
 })

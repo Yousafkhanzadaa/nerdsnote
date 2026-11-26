@@ -1,156 +1,112 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import DOMPurify from "dompurify";
-import { FileText, Clock, Calendar, ArrowUpRight, WifiOff, Shield, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import Link from 'next/link';
+import { useEffect, useState } from "react"
+import DOMPurify from "dompurify"
+import { BookmarkPlus, NotebookPen } from "lucide-react"
+import { isSafeNoteImageSrc } from "@/lib/note-images"
 
 interface SharedNoteViewProps {
-    content: string;
-    createdAt: string;
-    expiresAt: string | null;
-    openInAppUrl: string;
+  title?: string
+  content: string
+  createdAt: string
+  expiresAt: string | null
+  openInAppUrl: string
 }
 
-export default function SharedNoteView({
-    content,
-    createdAt,
-    expiresAt,
-    openInAppUrl,
-}: SharedNoteViewProps) {
-    const [sanitizedContent, setSanitizedContent] = useState("");
-    const createdDate = new Date(createdAt);
-    const expiresDate = expiresAt ? new Date(expiresAt) : null;
+const dateOptions: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric" }
+const utcDateFormat = new Intl.DateTimeFormat("en", { ...dateOptions, timeZone: "UTC" })
 
-    // Sanitize HTML on client side
-    useEffect(() => {
-        const clean = DOMPurify.sanitize(content, {
-            ALLOWED_TAGS: [
-                "p", "br", "strong", "b", "em", "i", "u", "s", "strike",
-                "h1", "h2", "h3", "h4", "h5", "h6",
-                "ul", "ol", "li",
-                "blockquote", "pre", "code",
-                "a", "span", "mark", "div", "label", "input",
-                "table", "thead", "tbody", "tfoot", "tr", "th", "td", "colgroup", "col"
-            ],
-            ALLOWED_ATTR: [
-                "href", "target", "rel", "class", "type", "checked", "disabled",
-                "data-type", "data-checked", "data-color", "data-indent",
-                "colspan", "rowspan", "colwidth"
-            ],
-        });
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(clean, "text/html");
+export default function SharedNoteView({ title, content, createdAt, expiresAt, openInAppUrl }: SharedNoteViewProps) {
+  const [sanitizedContent, setSanitizedContent] = useState("")
+  const [dateFormat, setDateFormat] = useState(utcDateFormat)
 
-        doc.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-            input.setAttribute("disabled", "disabled");
-        });
+  useEffect(() => {
+    setDateFormat(new Intl.DateTimeFormat(undefined, dateOptions))
+  }, [])
 
-        setSanitizedContent(doc.body.innerHTML);
-    }, [content]);
+  useEffect(() => {
+    // Template contents belong to an inert document. Inspect image sources
+    // before untrusted markup can load any resource in the reader's document.
+    const inertDocument = document.createElement("template").content.ownerDocument
+    const container = inertDocument.createElement("div")
+    container.innerHTML = content
+    container.querySelectorAll("img").forEach(img => {
+      if (!isSafeNoteImageSrc(img.getAttribute("src"))) {
+        img.remove()
+      } else if (!img.hasAttribute("alt")) {
+        img.alt = ""
+      }
+    })
+    DOMPurify.sanitize(container, {
+      IN_PLACE: true,
+      ALLOWED_TAGS: [
+        "p", "br", "hr", "strong", "b", "em", "i", "u", "s", "strike",
+        "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li",
+        "blockquote", "pre", "code", "a", "span", "mark", "div", "label", "input", "img",
+        "table", "thead", "tbody", "tfoot", "tr", "th", "td", "colgroup", "col",
+      ],
+      ALLOWED_ATTR: [
+        "href", "class", "type", "checked", "disabled", "start",
+        "data-type", "data-checked", "data-color", "data-indent",
+        "colspan", "rowspan", "colwidth",
+      ],
+      ADD_ATTR: (attr, tag) => tag === "img" && ["src", "alt", "title"].includes(attr),
+      ALLOW_DATA_ATTR: false,
+    })
+    container.querySelectorAll("input").forEach(input => {
+      if (input.type === "checkbox") input.disabled = true
+      else input.remove()
+    })
+    container.querySelectorAll("a[href]").forEach(link => {
+      link.setAttribute("rel", "noreferrer noopener nofollow")
+    })
+    // Only the editor's table wrapper needs a CSS class in published notes.
+    container.querySelectorAll("[class]").forEach(element => {
+      if (element.matches("div.tableWrapper") && element.querySelector(":scope > table")) {
+        element.setAttribute("class", "tableWrapper")
+      } else {
+        element.removeAttribute("class")
+      }
+    })
+    setSanitizedContent(container.innerHTML)
+  }, [content])
 
-    return (
-        <div className="min-h-screen bg-background text-foreground">
-            {/* Header */}
-            <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto flex items-center justify-between px-4 py-3">
-                    <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                        <FileText className="h-6 w-6 text-primary" />
-                        <h1 className="text-xl font-bold text-primary">NerdsNote</h1>
-                    </a>
-                    <Button onClick={() => window.open(openInAppUrl, '_blank')} variant="outline" size="sm">
-                        <ArrowUpRight className="h-4 w-4 mr-2" />
-                        Save to my notes
-                    </Button>
-                </div>
-            </header>
+  return (
+    <div className="min-h-dvh bg-background text-foreground">
+      <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-8">
+        <a href="/" className="inline-flex min-h-11 items-center gap-2 font-serif text-xl tracking-tight">
+          <NotebookPen aria-hidden="true" className="size-5 text-primary" />
+          NerdsNote
+        </a>
+        <a href={openInAppUrl} rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-primary transition-colors hover:bg-muted">
+          <BookmarkPlus aria-hidden="true" className="size-4" />
+          Save to my notes
+        </a>
+      </header>
 
-            {/* Content */}
-            <main className="max-w-4xl mx-auto px-4 py-8">
-                {/* Metadata badges */}
-                <div className="flex flex-wrap gap-3 mb-6 text-sm text-muted-foreground">
-                    <div className="flex items-center text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
-                        <Clock className="h-3 w-3 mr-1.5" />
-                        Shared on {createdDate.toLocaleDateString()}
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
-                        <Calendar className="h-3 w-3 mr-1.5" />
-                        {expiresDate
-                            ? `Expires on ${expiresDate.toLocaleDateString()}`
-                            : "Never expires"}
-                    </div>
-                </div>
-
-                {/* Note content with TipTap-like styling */}
-                <Card className="p-6 bg-card">
-                    <div
-                        className="note-rich-content prose prose-neutral dark:prose-invert max-w-none
-                            prose-headings:font-semibold prose-headings:text-foreground
-                            prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
-                            prose-p:text-foreground prose-p:leading-relaxed
-                            prose-strong:text-foreground prose-strong:font-bold
-                            prose-em:italic
-                            prose-ul:list-disc prose-ul:pl-6
-                            prose-ol:list-decimal prose-ol:pl-6
-                            prose-li:text-foreground
-                            prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground
-                            prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono
-                            prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
-                            prose-a:text-primary prose-a:underline hover:prose-a:no-underline
-                            [&_input]:pointer-events-none
-                            [&_u]:underline [&_s]:line-through [&_strike]:line-through"
-                        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-                    />
-                </Card>
-            </main>
-
-            {/* Conversion CTA */}
-            <section className="border-t border-border bg-muted/20">
-                <div className="mx-auto max-w-4xl px-4 py-12 text-center">
-                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                        <FileText className="h-6 w-6 text-primary" />
-                    </div>
-                    <h2 className="text-2xl font-bold tracking-tight">
-                        Get your own free notepad
-                    </h2>
-                    <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-                        NerdsNote is a free online notepad with no login. Your notes stay on
-                        your device, work offline, and auto-save as you type.
-                    </p>
-                    <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                        <Button asChild size="lg">
-                            <Link href="/notepad" prefetch={false}>
-                                Start writing — it&apos;s free
-                                <ArrowUpRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                        <Button asChild variant="outline" size="lg">
-                            <Link href="/features">See all features</Link>
-                        </Button>
-                    </div>
-                    <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                            <Shield className="h-4 w-4 text-primary" /> Private by default
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                            <WifiOff className="h-4 w-4 text-primary" /> Works offline
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                            <Zap className="h-4 w-4 text-primary" /> No account needed
-                        </span>
-                    </div>
-                </div>
-            </section>
-
-            {/* Footer badge */}
-            <footer className="border-t border-border bg-background py-5 text-center text-sm text-muted-foreground">
-                <Link href="/" className="inline-flex items-center gap-1.5 hover:text-foreground">
-                    <FileText className="h-4 w-4 text-primary" />
-                    Made with <span className="font-semibold text-primary">NerdsNote</span>
-                </Link>
-            </footer>
-        </div>
-    );
+      <main className="mx-auto max-w-[46rem] px-6 pb-24 pt-12 sm:px-8 sm:pt-20">
+        <article aria-labelledby="shared-note-heading">
+          <header className="mb-8 border-b border-border pb-6 sm:mb-10">
+            <h1 id="shared-note-heading" className="break-words font-serif text-4xl font-normal tracking-tight sm:text-5xl">
+              {title || "A shared note"}
+            </h1>
+            <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm leading-relaxed text-muted-foreground">
+              <span>Shared <time dateTime={createdAt}>{dateFormat.format(new Date(createdAt))}</time></span>
+              <span aria-hidden="true">·</span>
+              <span>
+                {expiresAt ? <>Expires <time dateTime={expiresAt}>{dateFormat.format(new Date(expiresAt))}</time></> : "No expiry"}
+              </span>
+            </p>
+          </header>
+          <div className="font-serif text-lg sm:text-xl">
+            <div
+              data-nosnippet=""
+              className="note-rich-content prose prose-neutral dark:prose-invert max-w-none text-foreground prose-headings:font-serif prose-headings:text-foreground prose-a:text-primary prose-a:underline-offset-4 prose-strong:text-foreground prose-blockquote:border-primary/40 prose-blockquote:text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+            />
+          </div>
+        </article>
+      </main>
+    </div>
+  )
 }

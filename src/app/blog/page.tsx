@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, BookOpen, Clock } from "lucide-react"
+import { ArrowRight, Rss } from "lucide-react"
 
 import { JsonLd } from "@/components/json-ld"
-import { Button } from "@/components/ui/button"
+import { SiteFooter, SiteHeader } from "@/components/site-chrome"
 import { blogPosts, formatBlogDate } from "@/lib/blog-posts"
 import { breadcrumbJsonLd, ogImage, siteUrl } from "@/lib/structured-data"
 
@@ -74,151 +74,77 @@ export default function BlogPage() {
       />
       <JsonLd data={blogJsonLd} />
 
-      <header className="border-b border-border">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <Image
-              src="/web-app-manifest-192x192.png"
-              alt="NerdsNote app icon"
-              width={32}
-              height={32}
-              className="rounded-md"
-              priority
-            />
-            <span>NerdsNote</span>
-          </Link>
-          <nav aria-label="Primary navigation" className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/features">Features</Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link href="/notepad" prefetch={false}>Start writing</Link>
-            </Button>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
-      <main>
-        <section className="relative overflow-hidden border-b border-border">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-grid" />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-hero-glow"
-          />
-          <div className="container relative mx-auto max-w-5xl px-4 py-16 text-center md:py-24">
-            <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-card text-primary shadow-sm">
-              <BookOpen className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-              NerdsNote guides
-            </p>
-            <h1 className="mx-auto mt-4 max-w-4xl text-balance text-4xl font-bold tracking-tight md:text-6xl">
-              Write better. Keep control of your notes.
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
-              Practical, plain-language guides to browser privacy, local storage,
-              reliable backups, and focused note-taking workflows.
-            </p>
+      <main id="main-content" className="paper-column pb-16 sm:pb-24">
+        <header className="pt-10 pb-8 sm:pt-16 sm:pb-12">
+          <div className="mb-5 flex items-center justify-between gap-4 text-sm">
+            <p className="text-primary">NerdsNote guides</p>
+            <a href="/feed.xml" className="paper-link inline-flex min-h-10 items-center gap-1.5">
+              <Rss className="size-3.5" aria-hidden="true" /> RSS
+            </a>
           </div>
-        </section>
+          <h1 className="paper-title max-w-[19ch] text-balance">Write better. Keep control of your notes.</h1>
+          <p className="paper-lead mt-4 max-w-[61ch]">
+            Practical, plain-language guides to browser privacy, local storage,
+            reliable backups, and focused note-taking workflows.
+          </p>
+        </header>
 
-        <section className="border-b border-border bg-muted/25">
-          <div className="container mx-auto grid max-w-6xl gap-5 px-4 py-14 md:grid-cols-2 lg:py-20">
-            {blogPosts.map((post, index) => (
-              <article
-                key={post.slug}
-                className={`group flex flex-col rounded-xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg ${
-                  index === 0 ? "md:col-span-2 md:p-8" : ""
+        <section aria-label="Writing and privacy guides" className="divide-y divide-border border-y border-border">
+          {blogPosts.map((post, index) => (
+            <article key={post.slug} className="py-7 sm:py-9">
+              <Link
+                href={`/blog/${post.slug}`}
+                aria-labelledby={`guide-${post.slug}`}
+                className={`group grid min-w-0 items-center gap-5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring sm:gap-8 ${
+                  post.image ? index === 0 ? "md:grid-cols-[1fr_1fr]" : "sm:grid-cols-[minmax(0,1fr)_minmax(12rem,32%)]" : ""
                 }`}
               >
                 {post.image && (
-                  <div className="mb-6 overflow-hidden rounded-lg border border-border bg-muted">
-                    <Image
-                      src={post.image.src}
-                      alt={post.image.alt}
-                      width={post.image.width}
-                      height={post.image.height}
-                      className="h-auto w-full transition-transform duration-300 group-hover:scale-[1.01]"
-                      sizes={
-                        index === 0
-                          ? "(max-width: 768px) 100vw, 1152px"
-                          : "(max-width: 768px) 100vw, 576px"
-                      }
-                      priority={index === 0}
-                    />
-                  </div>
+                  <Image
+                    src={post.image.src}
+                    alt={post.image.alt}
+                    width={post.image.width}
+                    height={post.image.height}
+                    className={`h-auto w-full rounded-sm border border-border/70 ${index > 0 ? "sm:order-last" : ""}`}
+                    sizes={index === 0 ? "(min-width: 768px) 440px, 92vw" : "(min-width: 640px) 288px, 92vw"}
+                    priority={index === 0}
+                  />
                 )}
-                <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
-                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">
-                    {post.category}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                    {post.readingMinutes} min read
-                  </span>
-                  <time dateTime={post.updatedAt}>
-                    Updated {formatBlogDate(post.updatedAt)}
-                  </time>
-                </div>
-                <h2
-                  className={`mt-5 font-bold tracking-tight ${
-                    index === 0 ? "text-3xl md:text-4xl" : "text-2xl"
-                  }`}
-                >
-                  <Link
-                    href={`/blog/${post.slug}`}
-                    className="outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
-                  >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs leading-5 text-muted-foreground">
+                    <span className="font-medium text-primary">{post.category}</span>
+                    <span>{post.readingMinutes} min read</span>
+                    <time dateTime={post.updatedAt}>Updated {formatBlogDate(post.updatedAt)}</time>
+                  </div>
+                  <h2 id={`guide-${post.slug}`} className={`mt-2 max-w-[32ch] text-pretty font-serif font-normal leading-[1.14] tracking-tight group-hover:text-primary ${
+                    index === 0 ? "text-[1.9rem] lg:text-[2.5rem]" : "text-[1.65rem] sm:text-[2rem]"
+                  }`}>
                     {post.title}
-                  </Link>
-                </h2>
-                <p className="mt-3 max-w-3xl flex-1 leading-7 text-muted-foreground">
-                  {post.excerpt}
-                </p>
-                <Link
-                  href={`/blog/${post.slug}`}
-                  className="mt-6 inline-flex w-fit items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
-                >
-                  Read the guide
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </article>
-            ))}
-          </div>
+                  </h2>
+                  <p className="mt-3 max-w-[64ch] text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">{post.excerpt}</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 group-hover:underline">
+                    Read the guide <ArrowRight className="size-4" aria-hidden="true" />
+                  </span>
+                </div>
+              </Link>
+            </article>
+          ))}
         </section>
 
-        <section className="container mx-auto max-w-6xl px-4 py-16">
-          <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-8 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight">
-                Put the ideas into practice.
-              </h2>
-              <p className="mt-2 text-muted-foreground">
-                Open a private, local-first notepad with no account required.
-              </p>
-            </div>
-            <Button size="lg" asChild>
-              <Link href="/notepad" prefetch={false}>
-                Open NerdsNote
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </Button>
+        <section className="flex flex-wrap items-end justify-between gap-4 pt-9 sm:pt-12">
+          <div>
+            <h2 className="paper-heading">Put the ideas into practice.</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Open a private, local-first notepad with no account required.</p>
           </div>
+          <Link href="/notepad" prefetch={false} className="paper-link inline-flex min-h-10 items-center gap-2 text-sm">
+            Open NerdsNote <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
         </section>
       </main>
 
-      <footer className="border-t border-border">
-        <div className="container mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <p>NerdsNote — free, private online notepad.</p>
-          <nav aria-label="Footer navigation" className="flex flex-wrap gap-4">
-            <Link href="/" className="hover:text-foreground">Home</Link>
-            <Link href="/about" className="hover:text-foreground">About</Link>
-            <Link href="/features" className="hover:text-foreground">Features</Link>
-            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-            <Link href="/feed.xml" className="hover:text-foreground">RSS</Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter currentHref="/blog" />
     </div>
   )
 }

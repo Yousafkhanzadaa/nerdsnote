@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, Check, FileText, Lock, Trash2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { ArrowRight, Check, LockKeyhole } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -16,123 +16,118 @@ export function MiniNotepadPreview() {
   const [draft, setDraft] = useState("")
   const [hasLoaded, setHasLoaded] = useState(false)
   const [storageError, setStorageError] = useState<string | null>(null)
+  const lastSaved = useRef<string | null | undefined>(undefined)
 
   useEffect(() => {
     try {
-      setDraft(localStorage.getItem(LANDING_DRAFT_STORAGE_KEY) ?? "")
+      lastSaved.current = localStorage.getItem(LANDING_DRAFT_STORAGE_KEY)
+      setDraft(lastSaved.current ?? "")
     } catch {
-      setStorageError("Browser storage is unavailable. You can still try the preview.")
+      setStorageError("Browser storage is unavailable. Copy your draft before leaving.")
     } finally {
       setHasLoaded(true)
     }
   }, [])
 
-  useEffect(() => {
-    if (!hasLoaded) return
+  function canSaveDraft() {
+    if (lastSaved.current === undefined) return false
+    if (localStorage.getItem(LANDING_DRAFT_STORAGE_KEY) === lastSaved.current) return true
+    setStorageError("Your saved draft changed in another tab. Copy this text before reloading.")
+    return false
+  }
 
+  const changeDraft = (value: string) => {
+    setDraft(value)
     try {
-      saveLandingDraft(localStorage, draft)
+      if (!canSaveDraft()) return
+      saveLandingDraft(localStorage, value)
+      lastSaved.current = value || null
       setStorageError(null)
     } catch {
-      setStorageError("This preview could not be saved in your browser.")
+      setStorageError("Your draft could not be saved. Copy it before leaving this page.")
     }
-  }, [draft, hasLoaded])
-
-  const wordCount = useMemo(() => {
-    const trimmedDraft = draft.trim()
-    return trimmedDraft ? trimmedDraft.split(/\s+/).length : 0
-  }, [draft])
+  }
 
   const continueInEditor = () => {
     try {
+      if (!canSaveDraft()) return
       prepareLandingDraftHandoff(localStorage, draft)
       window.location.assign("/notepad")
     } catch {
-      setStorageError("We could not move this draft. Copy it before opening the editor.")
+      setStorageError("Copy your draft, then use Open notebook to paste it into a note.")
     }
   }
 
-  const clearDraft = () => {
-    setDraft("")
-  }
+  const trimmedDraft = draft.trim()
+  const wordCount = trimmedDraft ? trimmedDraft.split(/\s+/).length : 0
 
   return (
-    <div className="relative text-left">
+    <section
+      aria-labelledby="draft-heading"
+      className="relative rounded-sm border border-border bg-card px-5 pt-8 text-card-foreground shadow-[0_2px_6px_rgb(45_40_24/0.035),0_16px_42px_-24px_rgb(45_40_24/0.18)] sm:px-12 sm:pt-12"
+    >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -inset-x-6 -top-8 bottom-0 bg-hero-glow"
+        className="absolute -top-px right-6 h-6 w-3.5 bg-primary [clip-path:polygon(0_0,100%_0,100%_100%,50%_78%,0_100%)] sm:right-12 sm:h-8"
       />
-      <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-elevated">
-        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
-          <div className="flex items-center gap-1.5" aria-hidden="true">
-            <span className="h-3 w-3 rounded-full bg-foreground/25" />
-            <span className="h-3 w-3 rounded-full bg-foreground/15" />
-            <span className="h-3 w-3 rounded-full bg-foreground/10" />
-          </div>
-          <div className="ml-2 flex min-w-0 items-center gap-2 text-xs font-medium text-muted-foreground sm:ml-3">
-            <FileText className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-            <span className="truncate">Quick draft</span>
-          </div>
-          <div className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-border bg-background/70 px-2 py-1 text-[11px] font-medium text-primary">
-            <Lock className="h-3 w-3" aria-hidden="true" />
-            Local preview
-          </div>
-        </div>
+      <h1 id="draft-heading" className="font-serif text-[2.75rem] leading-tight font-normal tracking-[-0.045em] sm:text-6xl">
+        <label htmlFor="landing-note-preview">Quick draft</label>
+      </h1>
+      <p id="draft-storage" className="mt-3 flex min-h-5 items-center gap-1.5 text-xs text-muted-foreground">
+        {storageError ? (
+          <span role="status" className="text-destructive">{storageError}</span>
+        ) : draft ? (
+          <>
+            <Check className="size-3.5 text-primary" aria-hidden="true" />
+            Saved in this browser
+          </>
+        ) : (
+          <>
+            <LockKeyhole className="size-3.5" aria-hidden="true" />
+            Private to this browser
+          </>
+        )}
+      </p>
 
-        <div className="p-4 sm:p-5">
-          <label htmlFor="landing-note-preview" className="sr-only">
-            Try the NerdsNote writable preview
-          </label>
-          <textarea
-            id="landing-note-preview"
-            value={draft}
-            maxLength={MAX_DRAFT_LENGTH}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={"Write something here...\n\nTry a quick idea, meeting note, checklist, or private draft."}
-            className="min-h-52 w-full resize-y rounded-lg border border-border bg-background px-4 py-3 text-base leading-7 text-foreground shadow-inner outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 sm:min-h-60"
-          />
+      <textarea
+        id="landing-note-preview"
+        aria-describedby="draft-storage"
+        value={draft}
+        readOnly={!hasLoaded}
+        maxLength={MAX_DRAFT_LENGTH}
+        onChange={(event) => changeDraft(event.target.value)}
+        placeholder="Start writing here…"
+        rows={6}
+        spellCheck
+        className="mt-7 block w-full resize-y rounded-none border-0 bg-transparent bg-local px-1 font-serif text-xl leading-9 text-foreground caret-primary outline-none placeholder:italic placeholder:text-muted-foreground focus-visible:outline-1 focus-visible:outline-offset-4 focus-visible:outline-ring sm:mt-9 sm:text-[1.4rem] sm:leading-10"
+        style={{
+          backgroundImage: "linear-gradient(to bottom, transparent calc(100% - 1px), color-mix(in oklch, var(--border) 78%, transparent) 1px)",
+          backgroundSize: "100% 1lh",
+        }}
+      />
 
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5 text-primary">
-                <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                {draft ? "Saved in this browser" : "Ready when you are"}
-              </span>
-              <span>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
-              <span>{draft.length.toLocaleString()} / {MAX_DRAFT_LENGTH.toLocaleString()}</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {draft && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearDraft}
-                  aria-label="Clear preview draft"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  Clear
-                </Button>
-              )}
-              <Button type="button" size="sm" onClick={continueInEditor}>
-                Continue in editor
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-
-          {storageError && (
-            <p role="status" className="mt-3 text-xs text-destructive">
-              {storageError}
-            </p>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border py-4 sm:mt-7 sm:py-5">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="tabular-nums">{wordCount} {wordCount === 1 ? "word" : "words"}</span>
+          {draft.length >= MAX_DRAFT_LENGTH - 200 && (
+            <span className="tabular-nums">{draft.length.toLocaleString()} / 4,000</span>
+          )}
+          {draft && (
+            <button
+              type="button"
+              onClick={() => changeDraft("")}
+              aria-label="Clear quick draft"
+              className="min-h-10 rounded-sm px-1 underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Clear
+            </button>
           )}
         </div>
+        <Button type="button" disabled={!hasLoaded || lastSaved.current === undefined} onClick={continueInEditor} className="ml-auto min-h-11 rounded-md px-4">
+          Continue in editor
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </Button>
       </div>
-      <p className="relative mt-3 text-center text-xs text-muted-foreground">
-        The preview stores only this draft in your browser. Open the full editor for formatting,
-        search, import, export, and sharing.
-      </p>
-    </div>
+    </section>
   )
 }

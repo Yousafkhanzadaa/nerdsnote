@@ -1,253 +1,222 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-    EXPIRY_SECONDS,
-    MAX_CONTENT_SIZE,
-    RATE_LIMIT_MAX,
-    SLUG_SIZE,
-} from "@/lib/share-types";
+import { NextRequest } from "next/server"
+import { nanoid } from "nanoid"
+import { createElement } from "react"
+import { cleanup, render, screen } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-// Mock Vercel KV
-const mockKv = {
-    get: vi.fn(),
-    set: vi.fn(),
-    incr: vi.fn(),
-};
+import { GET } from "@/app/api/share/[slug]/route"
+import { POST } from "@/app/api/share/route"
+import { metadata } from "@/app/s/[slug]/page"
+import SharedNoteView from "@/app/s/[slug]/shared-note-view"
+import { MAX_CONTENT_SIZE, MAX_SHARE_REQUEST_BYTES, MAX_SLUG_RETRIES } from "@/lib/share-types"
 
-vi.mock("@vercel/kv", () => ({
-    kv: mockKv,
-}));
+const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mOwjdEBAAGfAMbFnGqmAAAAAElFTkSuQmCC"
 
-// Mock nanoid
-vi.mock("nanoid", () => ({
-    nanoid: vi.fn(() => "abc12345"),
-}));
+const kv = vi.hoisted(() => ({
+  multi: vi.fn(), incr: vi.fn(), expire: vi.fn(), exec: vi.fn(), set: vi.fn(), get: vi.fn(),
+}))
+vi.mock("@vercel/kv", () => ({ kv }))
+vi.mock("nanoid", async importOriginal => {
+  const original = await importOriginal<typeof import("nanoid")>()
+  return { nanoid: vi.fn(original.nanoid) }
+})
 
-describe("Share Types and Constants", () => {
-    it("should have correct expiry seconds for 1 day", () => {
-        expect(EXPIRY_SECONDS["1d"]).toBe(86400);
-    });
+function create(body: unknown) {
+  return POST(new NextRequest("https://test.example/api/share", {
+    method: "POST",
+    headers: { "x-forwarded-for": "192.0.2.1" },
+    body: JSON.stringify(body),
+  }))
+}
 
-    it("should have correct expiry seconds for 7 days", () => {
-        expect(EXPIRY_SECONDS["7d"]).toBe(604800);
-    });
+function read(slug: string) {
+  return GET(new NextRequest(`https://test.example/api/share/${slug}`), {
+    params: Promise.resolve({ slug }),
+  })
+}
 
-    it("should have correct expiry seconds for 30 days", () => {
-        expect(EXPIRY_SECONDS["30d"]).toBe(2592000);
-    });
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://test.example")
+  kv.multi.mockReturnValue(kv)
+  kv.incr.mockReturnValue(kv)
+  kv.expire.mockReturnValue(kv)
+  kv.exec.mockResolvedValue([1, 1])
+  kv.set.mockResolvedValue("OK")
+})
 
-    it("should have correct max content size (50KB)", () => {
-        expect(MAX_CONTENT_SIZE).toBe(50 * 1024);
-    });
+afterEach(() => {
+  cleanup()
+  vi.unstubAllEnvs()
+})
 
-    it("should have correct rate limit max (20)", () => {
-        expect(RATE_LIMIT_MAX).toBe(20);
-    });
+describe("creating a share link", () => {
+  it("creates a seven-day snapshot with an opaque token and optional display title", async () => {
+    const response = await create({ content: "<p>Journal entry</p>", title: "  A thought  " })
+    expect(response.status).toBe(200)
+    const { slug, url, expiresAt } = await response.json()
+    expect(slug).toMatch(/^[\w-]{21}$/)
+    expect(url).toBe(`https://test.example/s/${slug}`)
+    expect(response.headers.get("Cache-Control")).toContain("no-store")
+    expect(kv.incr).toHaveBeenCalledWith("rate:share:192.0.2.1")
+    expect(kv.expire).toHaveBeenCalledWith("rate:share:192.0.2.1", 3600, "NX")
+    const snapshot = kv.set.mock.calls[0][1]
+    expect(kv.set).toHaveBeenCalledWith(`note:${slug}`, {
+      content: "<p>Journal entry</p>", title: "A thought", createdAt: expect.any(String), expiresAt,
+    }, { nx: true, ex: 604800 })
+    expect(Date.parse(expiresAt) - Date.parse(snapshot.createdAt)).toBe(604800000)
+  })
 
-    it("should have correct slug size (8)", () => {
-        expect(SLUG_SIZE).toBe(8);
-    });
-});
+  it.each([["1d", 86400], ["30d", 2592000], ["never", null]])(
+    "preserves the %s expiry choice", async (expiresIn, ttl) => {
+      expect((await create({ content: "Hi", title: "  ", expiresIn })).status).toBe(200)
+      const [, snapshot, options] = kv.set.mock.calls[0]
+      expect(snapshot).not.toHaveProperty("title")
+      expect(options).toEqual(ttl ? { nx: true, ex: ttl } : { nx: true })
+      if (ttl === null) expect(snapshot.expiresAt).toBeNull()
+    },
+  )
 
-describe("Content Validation", () => {
-    it("should detect empty content", () => {
-        const content: string = "";
-        const isEmpty = !content || content.trim().length === 0;
-        expect(isEmpty).toBe(true);
-    });
+  it.each([
+    null, [], {}, { content: 42 }, { content: "Hi", expiresIn: "invalid" },
+    { content: "Hi", expiresIn: null }, { content: "Hi", title: "a".repeat(121) },
+    { content: " \n " }, { content: "<p><br></p>" },
+  ])("rejects malformed or empty input before contacting storage", async body => {
+    expect((await create(body)).status).toBe(400)
+    expect(kv.multi).not.toHaveBeenCalled()
+    expect(kv.set).not.toHaveBeenCalled()
+  })
 
-    it("should detect whitespace-only content as empty", () => {
-        const content = "   \n\t  ";
-        const isEmpty = !content || content.trim().length === 0;
-        expect(isEmpty).toBe(true);
-    });
+  it("rejects malformed JSON", async () => {
+    const request = new NextRequest("https://test.example/api/share", { method: "POST", body: "{" })
+    expect((await POST(request)).status).toBe(400)
+    expect(kv.set).not.toHaveBeenCalled()
+  })
 
-    it("should accept valid content", () => {
-        const content = "Hello, world!";
-        const isEmpty = !content || content.trim().length === 0;
-        expect(isEmpty).toBe(false);
-    });
+  it("limits the UTF-8 size of the body", async () => {
+    expect((await create({ content: "à".repeat(MAX_CONTENT_SIZE / 2 + 1) })).status).toBe(413)
+    expect((await create({ content: "à".repeat(MAX_CONTENT_SIZE / 2) })).status).toBe(200)
+  })
 
-    it("should detect content exceeding 50KB", () => {
-        const content = "a".repeat(MAX_CONTENT_SIZE + 1);
-        const contentSize = new TextEncoder().encode(content).length;
-        expect(contentSize).toBeGreaterThan(MAX_CONTENT_SIZE);
-    });
+  it("accepts image-only notes and excludes only validated raster data from the text limit", async () => {
+    const img = `<img alt="Garden" src="${png}">`
+    const images = img.repeat(400)
+    expect(images.length).toBeGreaterThan(MAX_CONTENT_SIZE)
+    expect((await create({ content: images })).status).toBe(200)
+    expect(kv.set.mock.calls[0][1].content).toBe(images)
+    expect((await create({ content: img + "x".repeat(MAX_CONTENT_SIZE) })).status).toBe(413)
+    expect((await create({ content: `<img src="${png}" alt="${"x".repeat(MAX_CONTENT_SIZE)}">` })).status).toBe(413)
+    expect((await create({ content: "<p data-comment='" + png.repeat(500) + "'>Garden</p>" })).status).toBe(413)
+  })
 
-    it("should accept content within 50KB limit", () => {
-        const content = "a".repeat(MAX_CONTENT_SIZE);
-        const contentSize = new TextEncoder().encode(content).length;
-        expect(contentSize).toBeLessThanOrEqual(MAX_CONTENT_SIZE);
-    });
-});
+  it("limits the whole JSON payload, including data outside the note", async () => {
+    const result = await create({ content: "small", unused: "x".repeat(MAX_SHARE_REQUEST_BYTES) })
+    expect(result.status).toBe(413)
+    expect(kv.multi).not.toHaveBeenCalled()
+  })
 
-describe("Expiry Calculation", () => {
-    it("should calculate correct expiry date for 1 day", () => {
-        const now = new Date("2026-02-06T18:00:00Z");
-        const expiresAt = new Date(now.getTime() + EXPIRY_SECONDS["1d"] * 1000);
-        expect(expiresAt.toISOString()).toBe("2026-02-07T18:00:00.000Z");
-    });
+  it.each([
+    '<img src="https://example.org/photo.png">',
+    '<img src="data:image/svg+xml;base64,PHN2Zy8+">',
+    '<img src="data:image/png;base64,bm90LXBuZw==">',
+    `<img src="${png}" srcset="https://example.org/photo.png 2x">`,
+    `<picture><source srcset="https://example.org/photo.png"><img src="${png}"></picture>`,
+  ])("rejects unsupported image sources before publishing", async content => {
+    expect((await create({ content })).status).toBe(400)
+    expect(kv.set).not.toHaveBeenCalled()
+  })
 
-    it("should calculate correct expiry date for 7 days", () => {
-        const now = new Date("2026-02-06T18:00:00Z");
-        const expiresAt = new Date(now.getTime() + EXPIRY_SECONDS["7d"] * 1000);
-        expect(expiresAt.toISOString()).toBe("2026-02-13T18:00:00.000Z");
-    });
+  it("enforces the fixed-window limit", async () => {
+    kv.exec.mockResolvedValueOnce([20, 0]).mockResolvedValueOnce([21, 0])
+    expect((await create({ content: "Allowed" })).status).toBe(200)
+    expect((await create({ content: "Over limit" })).status).toBe(429)
+    expect(kv.set).toHaveBeenCalledTimes(1)
+  })
 
-    it("should calculate correct expiry date for 30 days", () => {
-        const now = new Date("2026-02-06T18:00:00Z");
-        const expiresAt = new Date(now.getTime() + EXPIRY_SECONDS["30d"] * 1000);
-        expect(expiresAt.toISOString()).toBe("2026-03-08T18:00:00.000Z");
-    });
+  it("retries with a new key after a collision without replacing the original", async () => {
+    vi.mocked(nanoid).mockReturnValueOnce("a".repeat(21)).mockReturnValueOnce("b".repeat(21))
+    kv.set.mockResolvedValueOnce(null)
+    const response = await create({ content: "A fresh note" })
+    expect((await response.json()).slug).toBe("b".repeat(21))
+    expect(kv.set).toHaveBeenCalledTimes(2)
+    for (const [, , options] of kv.set.mock.calls) expect(options.nx).toBe(true)
+  })
 
-    it('should return null for "never" expiry', () => {
-        const expiresIn = "never";
-        const expiresAt = expiresIn === "never" ? null : new Date();
-        expect(expiresAt).toBeNull();
-    });
-});
+  it("returns an error if every write collides", async () => {
+    kv.set.mockResolvedValue(null)
+    expect((await create({ content: "Hello" })).status).toBe(500)
+    expect(kv.set).toHaveBeenCalledTimes(MAX_SLUG_RETRIES)
+  })
+})
 
-describe("Rate Limiting Logic", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+describe("reading a share link", () => {
+  it.each(["OldLink8", "N".repeat(21)])("opens an existing snapshot by its token", async slug => {
+    const note = { content: "<p>A note</p>", createdAt: "2026-01-01T00:00:00.000Z", expiresAt: null }
+    kv.get.mockResolvedValue(note)
+    const response = await read(slug)
+    expect(kv.get).toHaveBeenCalledWith(`note:${slug}`)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual(note)
+    expect(response.headers.get("Cache-Control")).toContain("no-store")
+    expect(response.headers.get("Referrer-Policy")).toBe("no-referrer")
+  })
 
-    it("should allow first request", async () => {
-        mockKv.get.mockResolvedValue(null);
-        mockKv.set.mockResolvedValue("OK");
+  it("returns the author-supplied reader title as text", async () => {
+    kv.get.mockResolvedValue({ title: "<b>Title</b>", content: "<p>Body</p>", createdAt: "2026-01-01", expiresAt: null })
+    expect((await (await read("N".repeat(21))).json()).title).toBe("<b>Title</b>")
+  })
 
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
+  it("returns an uncached 404 for expired or unknown links", async () => {
+    kv.get.mockResolvedValue(null)
+    const response = await read("OldLink8")
+    expect(response.status).toBe(404)
+    expect(response.headers.get("Cache-Control")).toContain("no-store")
+  })
 
-        expect(withinLimit).toBe(true);
-    });
+  it("leaves storage diagnostics out of the response", async () => {
+    kv.get.mockRejectedValue(new Error("private database detail"))
+    const response = await read("OldLink8")
+    expect(response.status).toBe(500)
+    expect(await response.text()).not.toContain("private database detail")
+    expect(response.headers.get("Cache-Control")).toContain("no-store")
+  })
 
-    it("should allow requests below limit", async () => {
-        mockKv.get.mockResolvedValue(19);
+  it("uses a generic preview and suppresses indexing and referrers", () => {
+    expect(metadata).toMatchObject({
+      referrer: "no-referrer",
+      robots: { index: false, follow: false, nosnippet: true },
+      openGraph: { title: metadata.title, description: metadata.description },
+      twitter: { title: metadata.title, description: metadata.description },
+    })
+  })
 
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
+  it("renders the supplied title as text and preserves read-only task formatting", async () => {
+    const { container } = render(createElement(SharedNoteView, {
+      title: "<b>Reading list</b>",
+      content: '<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked></label><div><p>One more chapter</p></div></li></ul>',
+      createdAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: null,
+      openInAppUrl: "/notepad?openShared=OldLink8",
+    }))
+    expect(screen.getByRole("heading", { name: "<b>Reading list</b>" }).children).toHaveLength(0)
+    const checkbox = await screen.findByRole("checkbox") as HTMLInputElement
+    expect(checkbox.disabled).toBe(true)
+    expect(checkbox.checked).toBe(true)
+    expect(container.querySelector('ul[data-type="taskList"]')?.textContent).toContain("One more chapter")
+    expect(screen.getByRole("link", { name: "Save to my notes" }).getAttribute("href"))
+      .toBe("/notepad?openShared=OldLink8")
+  })
 
-        expect(withinLimit).toBe(true);
-    });
-
-    it("should block requests at limit", async () => {
-        mockKv.get.mockResolvedValue(20);
-
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
-
-        expect(withinLimit).toBe(false);
-    });
-
-    it("should block requests above limit", async () => {
-        mockKv.get.mockResolvedValue(25);
-
-        const current = await mockKv.get("rate:share:127.0.0.1");
-        const withinLimit = current === null || current < RATE_LIMIT_MAX;
-
-        expect(withinLimit).toBe(false);
-    });
-});
-
-describe("Slug Generation", () => {
-    it("should generate slug of correct length", async () => {
-        const { nanoid } = await import("nanoid");
-        const slug = nanoid(SLUG_SIZE);
-        expect(slug).toBe("abc12345");
-        expect(slug.length).toBe(8);
-    });
-});
-
-describe("KV Storage", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    it("should store note with TTL for 7d expiry", async () => {
-        mockKv.set.mockResolvedValue("OK");
-
-        const noteData = {
-            content: "Test note",
-            createdAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + EXPIRY_SECONDS["7d"] * 1000).toISOString(),
-        };
-
-        await mockKv.set("note:abc12345", noteData, { ex: EXPIRY_SECONDS["7d"] });
-
-        expect(mockKv.set).toHaveBeenCalledWith(
-            "note:abc12345",
-            noteData,
-            { ex: 604800 }
-        );
-    });
-
-    it("should store note without TTL for never expiry", async () => {
-        mockKv.set.mockResolvedValue("OK");
-
-        const noteData = {
-            content: "Test note",
-            createdAt: new Date().toISOString(),
-            expiresAt: null,
-        };
-
-        await mockKv.set("note:abc12345", noteData);
-
-        expect(mockKv.set).toHaveBeenCalledWith("note:abc12345", noteData);
-    });
-
-    it("should return null for non-existent note", async () => {
-        mockKv.get.mockResolvedValue(null);
-
-        const note = await mockKv.get("note:nonexistent");
-
-        expect(note).toBeNull();
-    });
-
-    it("should return note data for existing note", async () => {
-        const noteData = {
-            content: "Test note",
-            createdAt: "2026-02-06T18:00:00.000Z",
-            expiresAt: "2026-02-13T18:00:00.000Z",
-        };
-        mockKv.get.mockResolvedValue(noteData);
-
-        const note = await mockKv.get("note:abc12345");
-
-        expect(note).toEqual(noteData);
-    });
-});
-
-describe("HTML Escaping for XSS Prevention", () => {
-    function escapeHtml(text: string): string {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    it("should escape < and > characters", () => {
-        const input = "<script>alert('xss')</script>";
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("&lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;");
-    });
-
-    it("should escape & character", () => {
-        const input = "a & b";
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("a &amp; b");
-    });
-
-    it("should escape quotes", () => {
-        const input = 'He said "hello"';
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("He said &quot;hello&quot;");
-    });
-
-    it("should preserve normal text", () => {
-        const input = "Hello, world!";
-        const escaped = escapeHtml(input);
-        expect(escaped).toBe("Hello, world!");
-    });
-});
+  it("shows a local image with its alt text and strips remote images and alternate sources from old snapshots", async () => {
+    const { container } = render(createElement(SharedNoteView, {
+      content: `<picture><source srcset="https://example.org/a.png"><img src="${png}" alt="A &amp; B" title="Garden" srcset="https://example.org/b.png"></picture>
+        <img src="https://example.org/c.png"><img src="data:image/svg+xml;base64,PHN2Zy8+"><input type="image" src="https://example.org/d.png">`,
+      createdAt: "2026-01-01T00:00:00.000Z", expiresAt: null, openInAppUrl: "/notepad",
+    }))
+    const img = await screen.findByRole("img", { name: "A & B" })
+    expect(img.getAttribute("src")).toBe(png)
+    expect(img.getAttribute("title")).toBe("Garden")
+    expect(container.querySelectorAll("[src]")).toHaveLength(1)
+    expect(container.querySelector("source, [srcset]")).toBeNull()
+  })
+})

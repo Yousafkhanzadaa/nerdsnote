@@ -77,4 +77,27 @@ describe("note content utilities", () => {
     const content = "<p>Hello</p><p>world</p>"
     expect(notePreviewText(content)).toBe("Hello world")
   })
+
+  it("round-trips image-only HTML and indexes just its image description", () => {
+    const src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mOwjdEBAAGfAMbFnGqmAAAAAElFTkSuQmCC"
+    const html = `<img title="alt='other'" src="${src}" alt="Map > coast &amp; river">`
+    expect(normalizeNoteContent(html)).toBe(html)
+    expect(richTextToPlainText(html)).toBe("[Image: Map > coast & river]")
+    expect(notePreviewText(html)).toBe("[Image: Map > coast & river]")
+    const table = `<table><tr><td>${html}</td><td><p>North</p></td></tr></table>`
+    expect(richTextToPlainText(table)).toBe("[Image: Map > coast & river]\tNorth")
+    expect(richTextToPlainText(`<img src="${src}">`)).toBe("[Image]")
+    expect(richTextToPlainText(`<img src="${src}" alt="${src}">`)).toBe("[Image]")
+    expect(normalizeNoteContent(`<img src="${src}" onload="example()">`)).toContain("&lt;img")
+    expect(normalizeNoteContent(`<img src="${src}" src="example.jpg">`)).toContain("&lt;img")
+  })
+
+  it("preserves legacy notes that contain literal image markup", () => {
+    const relative = '<img src="example.jpg">'
+    const remote = '<img src="https://example.org/photo.png" alt="<p>Example</p>">'
+    for (const literal of [relative, remote]) {
+      expect(normalizeNoteContent(literal)).toBe(plainTextToHtml(literal))
+      expect(richTextToPlainText(literal)).toBe(literal)
+    }
+  })
 })

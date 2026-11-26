@@ -1,11 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-import { FileText, Shield } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { JsonLd } from "@/components/json-ld"
-import { breadcrumbJsonLd, ogImage } from "@/lib/structured-data"
+import { ReadingPage, ReadingSection } from "@/components/reading-page"
+import { ogImage } from "@/lib/structured-data"
 
 export const metadata: Metadata = {
   title: "Privacy Policy - NerdsNote",
@@ -27,17 +23,22 @@ const sections = [
   {
     title: "Local notes",
     body:
-      "By default, your notes are stored locally in your browser. NerdsNote does not upload regular notes to its servers unless you choose to create a share link.",
+      "NerdsNote saves drafts and inserted images in this browser profile. Someone who can open your notebook in the same profile can read them. You can also choose a local folder for your notes.",
   },
   {
     title: "Share links",
     body:
-      "When you create a shareable link, the selected note content is uploaded so anyone with the link can view it. You choose how long the link lasts, up to 30 days, after which it expires automatically.",
+      "Creating a link uploads a copy of one note and the optional title you choose for readers. Your browser prepares compact copies of images on your device for the upload. Links last one, seven, or thirty days. Anyone with the link can read or save the shared copy and keep it after expiry.",
   },
   {
     title: "Analytics",
     body:
-      "NerdsNote uses privacy-friendly Vercel Web Analytics for aggregate site usage and Vercel Speed Insights for performance metrics. These services do not read or collect your note content.",
+      "NerdsNote does not run visitor analytics or performance tracking scripts. The share service uses a temporary IP-based counter to limit how many links can be created in an hour.",
+  },
+  {
+    title: "Feedback",
+    body:
+      "If you submit feedback, the form saves your message, optional email address, and submission time in Firestore.",
   },
   {
     title: "Backups",
@@ -53,55 +54,15 @@ const sections = [
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: "Home", path: "/" },
-          { name: "Privacy Policy", path: "/privacy" },
-        ])}
-      />
-      <header className="border-b border-border">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
-            <span>NerdsNote</span>
-          </Link>
-          <Button size="sm" asChild>
-            <Link href="/notepad" prefetch={false}>Start writing</Link>
-          </Button>
-        </div>
-      </header>
-
-      <main>
-        <section className="border-b border-border">
-          <div className="container mx-auto max-w-4xl px-4 py-14">
-            <div className="flex items-center gap-3 text-sm font-medium text-primary">
-              <Shield className="h-5 w-5" aria-hidden="true" />
-              <span>Privacy Policy</span>
-            </div>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-5xl">
-              Your notes stay local by default.
-            </h1>
-            <p className="mt-5 text-lg leading-8 text-muted-foreground">
-              This policy explains how NerdsNote handles note content, share
-              links, analytics, and backups.
-            </p>
-          </div>
-        </section>
-
-        <section className="bg-muted/25">
-          <div className="container mx-auto grid max-w-4xl gap-4 px-4 py-12">
-            {sections.map((section) => (
-              <Card key={section.title} className="rounded-md p-6">
-                <h2 className="text-xl font-semibold">{section.title}</h2>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  {section.body}
-                </p>
-              </Card>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
+    <ReadingPage
+      name="Privacy Policy"
+      path="/privacy"
+      title="Your notes stay local by default."
+      lead="This policy explains how NerdsNote handles note content, share links, analytics, and backups."
+    >
+      {sections.map(({ title, body }) => (
+        <ReadingSection key={title} title={title} body={body} />
+      ))}
+    </ReadingPage>
   )
 }

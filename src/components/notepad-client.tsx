@@ -2,26 +2,32 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Download, Upload, Search, Plus, Trash2, Moon, Sun, FileText, Maximize2, Minimize2, Menu, X, MessageSquare, Link2, Sparkles, FolderOpen, HardDrive } from "lucide-react"
+import Link from "next/link"
+import { AlertDialog, Dialog } from "radix-ui"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { BookOpen, Download, Ellipsis, FolderOpen, Link2, Maximize2, MessageSquare, Minimize2, Moon, NotebookPen, Plus, Search, Sun, Trash2, Type, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useEditor, EditorContent } from "@tiptap/react"
+import { useEditor, useEditorState, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { TaskItem, TaskList } from "@tiptap/extension-list"
 import CharacterCount from "@tiptap/extension-character-count"
 import { Highlight } from "@tiptap/extension-highlight"
 import { TableKit } from "@tiptap/extension-table"
 import { EditorToolbar } from "@/components/editor-toolbar"
+import { NoteImages } from "@/components/note-images"
+import { ChartDialog } from "@/components/chart-dialog"
+import { NoteImage } from "@/lib/tiptap/note-image"
 
 import { CreateShareLinkDialog } from "@/components/create-share-link-dialog"
 import { ConnectFolderDialog } from "@/components/connect-folder-dialog"
 import { FeedbackDialog } from "@/components/feedback-dialog"
 import { cn } from "@/lib/utils"
 import { FileSystemStorage, fileSystemStorage } from "@/lib/file-system-storage"
-import { consumeLandingDraftHandoff, landingDraftTitle } from "@/lib/landing-draft"
+import { readLandingDraftHandoff, completeLandingDraftHandoff, landingDraftTitle } from "@/lib/landing-draft"
+import { BrowserNotebook, mergeFolderNotes } from "@/lib/browser-notebook"
 import { normalizeNoteContent, notePreviewText, richTextToPlainText } from "@/lib/note-content"
 import { ParagraphIndent } from "@/lib/tiptap/paragraph-indent"
+import { isShareSlug } from "@/lib/share-types"
 
 interface Note {
   id: string
@@ -30,7 +36,7 @@ interface Note {
   lastModified: Date
 }
 
-const DEFAULT_FONT_SIZE = 16
+const DEFAULT_FONT_SIZE = 20
 const MIN_FONT_SIZE = 12
 const MAX_FONT_SIZE = 24
 const FONT_SIZE_STORAGE_KEY = "nerds-note-font-size"
@@ -57,156 +63,121 @@ export default function NotepadClient() {
   const [isDistractFree, setIsDistractFree] = useState(false)
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
+  const [isFormatOpen, setIsFormatOpen] = useState(false)
+  const [mediaDialog, setMediaDialog] = useState<{ noteId: string; type: "image" | "chart" } | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const libraryTrigger = useRef<HTMLButtonElement>(null)
+  const importRef = useRef<HTMLInputElement>(null)
+  const focusNewNote = useRef(false)
   const [isCreateLinkDialogOpen, setIsCreateLinkDialogOpen] = useState(false)
   const [isConnectFolderDialogOpen, setIsConnectFolderDialogOpen] = useState(false)
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false)
-  const [showAnnouncement, setShowAnnouncement] = useState(false)
   const [folderSyncNotice, setFolderSyncNotice] = useState<string | null>(null)
+  const [shareImportNotice, setShareImportNotice] = useState<string | null>(null)
   const [storageError, setStorageError] = useState<string | null>(null)
+  const unsavedNoteIds = useRef(new Set<string>())
   const [isStorageReady, setIsStorageReady] = useState(false)
 
-  // File System Storage State
   const [isFileSystemSupported, setIsFileSystemSupported] = useState(false)
   const [connectedDirectoryName, setConnectedDirectoryName] = useState<string | null>(null)
-  // Per-note debounce timers for folder saves, so editing note A then quickly
-  // switching to note B never drops A's pending save.
-  const saveTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const [folderBusy, setFolderBusy] = useState(false)
+  const transitioning = useRef(false)
+  const notebook = useRef(new BrowserNotebook())
+  const currentNotes = useRef<Note[]>([])
+  const starterId = useRef<string | null>(null)
+  const folder = useRef<{ name: string; ids: Map<string, string>; linked: Set<string> } | null>(null)
+  const folderTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  const activeWrites = useRef(new Set<Promise<void>>())
+  const deferredFolderEdits = useRef(new Set<string>())
 
-  const clearFolderSaveTimers = () => {
-    for (const timeout of saveTimeoutsRef.current.values()) {
-      clearTimeout(timeout)
-    }
-    saveTimeoutsRef.current.clear()
+  function showNotes(next: Note[]) {
+    currentNotes.current = next
+    setNotes(next)
   }
 
-  const loadLocalStorageNotes = () => {
-    const savedNotes = localStorage.getItem("nerds-note-data")
-
-    if (savedNotes) {
-      let parsedNotes: Note[]
-      try {
-        parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
-          ...note,
-          content: normalizeNoteContent(note.content),
-          lastModified: new Date(note.lastModified),
-        }))
-      } catch (error) {
-        // Corrupt data shouldn't blank the app — start fresh and let the next
-        // save overwrite the bad value.
-        console.error("Failed to parse saved notes:", error)
-        setNotes([])
-        setActiveNoteId(null)
-        return null
-      }
-      setNotes(parsedNotes)
-      if (parsedNotes.length > 0) {
-        setActiveNoteId(parsedNotes[0].id)
-      } else {
-        setActiveNoteId(null)
-      }
-      return savedNotes
-    }
-
-    setNotes([])
-    setActiveNoteId(null)
-    return null
+  function storageFailure(error: unknown) {
+    setStorageError(notebook.current.warning ?? (error instanceof DOMException && error.name === "QuotaExceededError"
+      ? "Browser storage is full. Download your edits before leaving this page."
+      : "Browser saving is unavailable. Download your edits to keep a copy."))
   }
 
-  const isFileSystemPermissionError = (error: unknown) =>
-    error instanceof DOMException && (error.name === "NotAllowedError" || error.name === "SecurityError")
-
-  const handleFolderSyncUnavailable = async (
-    message = "Folder access expired. Reconnect your folder to keep syncing to local files.",
-  ) => {
-    clearFolderSaveTimers()
-
-    await fileSystemStorage.disconnectDirectory()
-    setConnectedDirectoryName(null)
-    setFolderSyncNotice(message)
-  }
-
-  const ensureDirectoryWriteAccess = async (interactive = false) => {
-    if (!connectedDirectoryName) {
-      return false
-    }
-
+  function saveBrowser(note: Note, changes?: Partial<Pick<Note, "title" | "content">>) {
     try {
-      const hasAccess = interactive
-        ? await fileSystemStorage.verifyPermission("readwrite")
-        : await fileSystemStorage.hasPermission("readwrite")
-
-      if (hasAccess) {
-        setFolderSyncNotice(null)
-        return true
-      }
-    } catch (error) {
-      console.error("Failed to verify folder permission:", error)
-    }
-
-    await handleFolderSyncUnavailable()
-    return false
-  }
-
-  const saveNoteToDirectory = async (note: Note, interactive = false) => {
-    // An immediate save supersedes any pending debounced save for this note, so
-    // a stale timer can't fire afterwards and clobber a rename.
-    const pending = saveTimeoutsRef.current.get(note.id)
-    if (pending) {
-      clearTimeout(pending)
-      saveTimeoutsRef.current.delete(note.id)
-    }
-
-    if (!(await ensureDirectoryWriteAccess(interactive))) {
-      return false
-    }
-
-    try {
-      await fileSystemStorage.saveNote(note)
-      setFolderSyncNotice(null)
+      notebook.current.save(localStorage, note, changes)
+      unsavedNoteIds.current.clear()
+      setStorageError(null)
       return true
     } catch (error) {
-      if (isFileSystemPermissionError(error)) {
-        await handleFolderSyncUnavailable()
-      } else {
-        console.error("Failed to sync note to folder:", error)
-      }
+      unsavedNoteIds.current.add(note.id)
+      storageFailure(error)
       return false
     }
   }
 
-  const scheduleFolderSave = (note: Note) => {
-    const timeouts = saveTimeoutsRef.current
-    const existing = timeouts.get(note.id)
-    if (existing) {
-      clearTimeout(existing)
-    }
-    timeouts.set(
-      note.id,
-      setTimeout(() => {
-        timeouts.delete(note.id)
-        void saveNoteToDirectory(note, false)
-      }, 1000),
-    )
+  function cancelFolderTimer(id: string) {
+    const pending = folderTimers.current.get(id)
+    if (pending) clearTimeout(pending)
+    folderTimers.current.delete(id)
   }
 
-  const deleteNoteFromDirectory = async (noteId: string) => {
-    if (!(await ensureDirectoryWriteAccess(false))) {
-      return false
-    }
-
-    try {
-      await fileSystemStorage.deleteNote(noteId)
-      setFolderSyncNotice(null)
+  function writeFolder(note: Note) {
+    cancelFolderTimer(note.id)
+    const destination = folder.current
+    if (!destination || notebook.current.warning) return Promise.resolve(false)
+    const fileId = destination.ids.get(note.id) ??
+      (fileSystemStorage.wasRemoved(note.id) ? crypto.randomUUID() : note.id)
+    destination.ids.set(note.id, fileId)
+    // Submit directly to the adapter's serial queue before any picker or
+    // disconnect can switch its target directory.
+    const result = fileSystemStorage.saveNote({ ...note, id: fileId }).then(() => {
+      destination.linked.add(note.id)
       return true
-    } catch (error) {
-      if (isFileSystemPermissionError(error)) {
-        await handleFolderSyncUnavailable()
-      } else {
-        console.error("Failed to delete note from folder:", error)
-      }
+    }).catch((error) => {
+      console.error("Folder save failed:", error)
+      if (folder.current === destination) setFolderSyncNotice("Could not save a change to your folder. Reconnect to review its files.")
       return false
+    })
+    const pending = result.then(() => {})
+    activeWrites.current.add(pending)
+    void pending.then(() => { activeWrites.current.delete(pending) })
+    return result
+  }
+
+  function scheduleFolderSave(note: Note) {
+    if (!folder.current) return
+    cancelFolderTimer(note.id)
+    folderTimers.current.set(note.id, setTimeout(() => { void writeFolder(note) }, 1000))
+  }
+
+  function flushFolderSaves() {
+    for (const id of folderTimers.current.keys()) {
+      const note = currentNotes.current.find((entry) => entry.id === id)
+      if (note) void writeFolder(note)
+      else cancelFolderTimer(id)
     }
+  }
+
+  function finishTransition() {
+    transitioning.current = false
+    editor?.setEditable(true, false)
+    setFolderBusy(false)
+    // A file reader or shared-link request can finish while the picker is open.
+    for (const id of deferredFolderEdits.current) {
+      const note = currentNotes.current.find((entry) => entry.id === id)
+      if (note) void writeFolder(note)
+    }
+    deferredFolderEdits.current.clear()
+  }
+
+  function applyFolder(files: Note[], name: string) {
+    const local = files.length ? currentNotes.current.filter((note) => note.id !== starterId.current) : currentNotes.current
+    const merged = mergeFolderNotes(local, files)
+    folder.current = { name, ids: merged.folderIds, linked: merged.linked }
+    setConnectedDirectoryName(name)
+    showNotes(merged.notes)
+    setActiveNoteId((previous) => merged.notes.some((note) => note.id === previous) ? previous : merged.notes[0]?.id ?? null)
+    return merged
   }
 
   const editor = useEditor({
@@ -224,6 +195,7 @@ export default function NotepadClient() {
         },
       }),
       ParagraphIndent,
+      NoteImage,
       CharacterCount,
     ],
     immediatelyRender: false,
@@ -232,7 +204,10 @@ export default function NotepadClient() {
     },
     editorProps: {
       attributes: {
-        class: "note-rich-content prose dark:prose-invert focus:outline-none max-w-none h-full min-h-[50vh] px-4 py-2",
+        class: "note-rich-content prose dark:prose-invert font-serif text-foreground focus:outline-none max-w-none min-h-[50vh] leading-[1.8]",
+        role: "textbox",
+        "aria-label": "Note body",
+        "aria-multiline": "true",
       },
     },
     onUpdate: ({ editor }) => {
@@ -242,224 +217,205 @@ export default function NotepadClient() {
     },
   })
 
-  // Load notes from localStorage on mount
   useEffect(() => {
-    const savedNotes = loadLocalStorageNotes()
-    if (!savedNotes) {
-      // Create initial note
-      const initialNote: Note = {
-        id: "1",
-        title: "NerdsNote",
-        content: normalizeNoteContent("Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser."),
-        lastModified: new Date(),
+    let cancelled = false
+    const browser = new BrowserNotebook()
+    notebook.current = browser
+    let local: Note[] = []
+    try {
+      local = browser.read(localStorage)
+    } catch (error) {
+      browser.warning = "Could not access browser storage. Download your edits to keep a copy."
+      storageFailure(error)
+    }
+    setStorageError(browser.warning)
+    if (!local.length && browser.source === null && !browser.warning) {
+      const blank = { id: crypto.randomUUID(), title: "", content: "", lastModified: new Date() }
+      starterId.current = blank.id
+      local = [blank]
+    }
+    showNotes(local)
+    setActiveNoteId(local[0]?.id ?? null)
+    try {
+      setIsDarkMode(localStorage.getItem("nerds-note-theme") === "dark")
+      const size = parseStoredFontSize(localStorage.getItem(FONT_SIZE_STORAGE_KEY))
+      if (size !== null) setFontSize(size)
+    } catch {
+      // Preferences are optional when the browser disallows storage.
+    }
+
+    async function restore() {
+      try {
+        if (!FileSystemStorage.isSupported()) return
+        setIsFileSystemSupported(true)
+        if (!await fileSystemStorage.loadHandle() || cancelled) return
+        if (!await fileSystemStorage.hasPermission("readwrite")) {
+          if (!cancelled) setFolderSyncNotice("Folder access has expired. Reconnect your folder to resume saving files.")
+          return
+        }
+        if (cancelled) return
+        const files = await fileSystemStorage.loadNotes()
+        const name = fileSystemStorage.getDirectoryName()
+        if (!cancelled && name) applyFolder(files, name)
+      } catch {
+        if (!cancelled) setFolderSyncNotice("Could not open your remembered folder. Reconnect to try again.")
+      } finally {
+        if (!cancelled) setIsStorageReady(true)
       }
-      setNotes([initialNote])
-      setActiveNoteId(initialNote.id)
     }
-
-    // Check if user has seen the new features announcement
-    const hasSeenAnnouncement = localStorage.getItem("nerds-note-seen-v6-features")
-    if (savedNotes && !hasSeenAnnouncement) {
-      // Only show to existing users (who have saved notes)
-      setShowAnnouncement(true)
+    void restore()
+    window.addEventListener("pagehide", flushFolderSaves)
+    return () => {
+      cancelled = true
+      window.removeEventListener("pagehide", flushFolderSaves)
+      flushFolderSaves()
     }
+  }, [])
 
-    // Load theme preference
-    const savedTheme = localStorage.getItem("nerds-note-theme")
-    if (savedTheme === "dark") {
-      setIsDarkMode(true)
-      document.documentElement.classList.add("dark")
-    }
-
-    const savedFontSize = parseStoredFontSize(localStorage.getItem(FONT_SIZE_STORAGE_KEY))
-    if (savedFontSize !== null) {
-      setFontSize(savedFontSize)
-    }
-
+  useEffect(() => {
+    if (!isStorageReady) return
+    let cancelled = false
     // Handle openShared URL parameter to import shared notes
     const urlParams = new URLSearchParams(window.location.search)
     const openSharedSlug = urlParams.get("openShared")
-    if (openSharedSlug) {
+    if (openSharedSlug && !isShareSlug(openSharedSlug)) {
+      setShareImportNotice("This share link is incomplete. Open the original link to save a copy.")
+    } else if (openSharedSlug) {
       // Fetch the shared note and create a local copy
       fetch(`/api/share/${openSharedSlug}`)
-        .then(res => res.ok ? res.json() : null)
+        .then(res => {
+          if (!res.ok) throw new Error("Shared note unavailable")
+          return res.json()
+        })
         .then(data => {
-          if (data && data.content) {
+          if (!cancelled && data && data.content) {
             const importedNote: Note = {
-              id: Date.now().toString(),
-              title: "New Note",
+              id: crypto.randomUUID(),
+              title: typeof data.title === "string" ? data.title : "",
               content: normalizeNoteContent(data.content),
               lastModified: new Date(),
             }
-            setNotes(prev => [importedNote, ...prev])
-            setActiveNoteId(importedNote.id)
-            // Clean up URL
-            window.history.replaceState({}, document.title, window.location.pathname)
+            if (addNote(importedNote)) {
+              window.history.replaceState({}, document.title, window.location.pathname)
+            }
           }
         })
         .catch(() => {
-          // Failed to fetch shared note, ignore
+          if (!cancelled) setShareImportNotice("Could not open the shared note. Check your connection or ask the writer for a fresh link.")
         })
     }
-  }, [])
+    return () => { cancelled = true }
+  }, [isStorageReady])
 
-  // Initialize File System Storage
-  useEffect(() => {
-    const initializeFileSystem = async () => {
-      if (!FileSystemStorage.isSupported()) {
-        setIsStorageReady(true)
-        return
-      }
-
-      setIsFileSystemSupported(true)
-
-      try {
-        const success = await fileSystemStorage.loadHandle()
-        if (!success) return
-
-        const hasWriteAccess = await fileSystemStorage.hasPermission("readwrite")
-        if (!hasWriteAccess) {
-          await handleFolderSyncUnavailable()
-          return
-        }
-
-        const name = fileSystemStorage.getDirectoryName()
-        setConnectedDirectoryName(name)
-        setFolderSyncNotice(null)
-
-        const fsNotes = await fileSystemStorage.loadNotes()
-        if (fsNotes.length > 0) {
-          setNotes(fsNotes)
-          setActiveNoteId(fsNotes[0].id)
-        }
-      } catch (error) {
-        if (isFileSystemPermissionError(error)) {
-          await handleFolderSyncUnavailable()
-        } else {
-          console.error("Failed to load notes from connected folder:", error)
-        }
-      } finally {
-        setIsStorageReady(true)
-      }
-    }
-
-    void initializeFileSystem()
-  }, [])
-
-  // Move an explicitly continued landing-page draft into a real note only
-  // after browser/folder storage has finished loading, so it cannot be
-  // overwritten by the asynchronous folder restore.
   useEffect(() => {
     if (!isStorageReady) return
-
-    let landingDraft: string | null = null
-
     try {
-      landingDraft = consumeLandingDraftHandoff(localStorage)
-    } catch (error) {
-      console.error("Failed to read the landing-page draft:", error)
-    }
-
-    if (!landingDraft) return
-
-    const importedNote: Note = {
-      id: `landing-${Date.now()}`,
-      title: landingDraftTitle(landingDraft),
-      content: normalizeNoteContent(landingDraft),
-      lastModified: new Date(),
-    }
-
-    setNotes((previousNotes) => [importedNote, ...previousNotes])
-    setActiveNoteId(importedNote.id)
-
-    if (fileSystemStorage.getDirectoryName()) {
-      void fileSystemStorage.saveNote(importedNote).catch((error) => {
-        console.error("Failed to save the landing-page draft to the connected folder:", error)
-      })
+      const handoff = readLandingDraftHandoff(localStorage)
+      if (!handoff) return
+      const previous = currentNotes.current.find((note) => note.id === handoff.id)
+      if (previous && notebook.current.containsSaved(handoff.id)) {
+        completeLandingDraftHandoff(localStorage, handoff)
+        setActiveNoteId(handoff.id)
+        return
+      }
+      const note = previous ?? {
+        id: handoff.id, title: landingDraftTitle(handoff.draft),
+        content: normalizeNoteContent(handoff.draft), lastModified: new Date(),
+      }
+      if (addNote(note)) completeLandingDraftHandoff(localStorage, handoff)
+    } catch {
+      setStorageError("Could not finish moving the quick draft. Your draft remains on the home page.")
     }
   }, [isStorageReady])
 
-  const handleConnectDirectory = async () => {
+  async function handleConnectDirectory(copyExistingNotes: boolean) {
+    if (transitioning.current) return
+    transitioning.current = true
+    editor?.setEditable(false, false)
+    setFolderBusy(true)
+    flushFolderSaves()
+    const previous = folder.current
     try {
-      await fileSystemStorage.connectDirectory()
-      const directoryName = fileSystemStorage.getDirectoryName()
-      if (!directoryName) {
+      // The picker needs a user gesture. Flushed writes have already entered
+      // the adapter queue ahead of its selected-directory change.
+      const changed = await fileSystemStorage.connectDirectory()
+      if (!changed) return
+      folder.current = null
+      setConnectedDirectoryName(null)
+      const files = await fileSystemStorage.loadNotes()
+      const name = fileSystemStorage.getDirectoryName()
+      if (!name) return
+      const merged = applyFolder(files, name)
+      setFolderSyncNotice(null)
+      if (copyExistingNotes && !notebook.current.warning) {
+        try {
+          notebook.current.check(localStorage)
+        } catch (error) {
+          storageFailure(error)
+          return
+        }
+        for (const note of merged.notes) {
+          if (!notebook.current.hasRecord(note.id) || merged.linked.has(note.id) ||
+              previous?.linked.has(note.id) || fileSystemStorage.wasRemoved(note.id)) continue
+          await writeFolder(note)
+        }
+      }
+    } catch {
+      setFolderSyncNotice("Could not finish opening the folder. Your notebook is still available here.")
+    } finally {
+      finishTransition()
+    }
+  }
+
+  async function handleDisconnectDirectory() {
+    if (transitioning.current) return
+    transitioning.current = true
+    editor?.setEditable(false, false)
+    setFolderBusy(true)
+    try {
+      flushFolderSaves()
+      await Promise.all(activeWrites.current)
+      // Disconnect used to leave folder notes available in the browser. Make
+      // that copy durable before releasing the only remembered folder handle.
+      try {
+        notebook.current.retain(localStorage, currentNotes.current.filter((note) => note.id !== starterId.current))
+      } catch (error) {
+        storageFailure(error)
+        setFolderSyncNotice("The folder is still connected because its notes could not be saved in this browser.")
         return
       }
-
-      setConnectedDirectoryName(directoryName)
+      await fileSystemStorage.disconnectDirectory()
+      folder.current = null
+      setConnectedDirectoryName(null)
       setFolderSyncNotice(null)
-
-      // Save existing notes to the new folder (Migration)
-      for (const note of notes) {
-        await fileSystemStorage.saveNote(note)
-      }
-
-      // Reload from FS to ensure consistency
-      const fsNotes = await fileSystemStorage.loadNotes()
-      setNotes(fsNotes)
-      if (fsNotes.length > 0 && !activeNoteId) {
-        setActiveNoteId(fsNotes[0].id)
-      }
-    } catch (error) {
-      console.error("Failed to connect directory:", error)
-      if (isFileSystemPermissionError(error)) {
-        await handleFolderSyncUnavailable("Folder access was denied. Reconnect the folder to enable local sync.")
-      }
+      setStorageError(null)
+    } catch {
+      setFolderSyncNotice("Could not finish disconnecting the folder.")
+    } finally {
+      finishTransition()
     }
   }
 
-  const handleDisconnectDirectory = async () => {
-    await fileSystemStorage.disconnectDirectory()
-    setConnectedDirectoryName(null)
-    setFolderSyncNotice(null)
-    // Reload notes from localStorage
-    loadLocalStorageNotes()
-  }
-
-  // Save notes to localStorage whenever notes change
   useEffect(() => {
-    if (notes.length > 0) {
-      try {
-        localStorage.setItem("nerds-note-data", JSON.stringify(notes))
-        setStorageError(null)
-      } catch (error) {
-        // Most likely QuotaExceededError. Surface it instead of failing silently.
-        console.error("Failed to save notes to browser storage:", error)
-        setStorageError(
-          "Browser storage is full — recent changes may not be saved. Export important notes or connect a local folder.",
-        )
-      }
+    if (!isStorageReady) return
+    document.documentElement.classList.toggle("dark", isDarkMode)
+    try {
+      localStorage.setItem("nerds-note-theme", isDarkMode ? "dark" : "light")
+      localStorage.setItem(FONT_SIZE_STORAGE_KEY, String(fontSize))
+    } catch {
+      // Appearance settings still apply for this session.
     }
-  }, [notes])
-
-  useEffect(() => {
-    return () => {
-      clearFolderSaveTimers()
-    }
-  }, [])
-
-  // Toggle theme
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark")
-      localStorage.setItem("nerds-note-theme", "dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-      localStorage.setItem("nerds-note-theme", "light")
-    }
-  }, [isDarkMode])
-
-  useEffect(() => {
-    localStorage.setItem(FONT_SIZE_STORAGE_KEY, String(fontSize))
-  }, [fontSize])
+  }, [isDarkMode, fontSize, isStorageReady])
 
   const activeNote = notes.find((note) => note.id === activeNoteId)
+  useEffect(() => {
+    if (mediaDialog && mediaDialog.noteId !== activeNoteId) setMediaDialog(null)
+  }, [mediaDialog, activeNoteId])
 
   // Sync editor content when active note changes
   const prevActiveNoteIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (editor && activeNote && activeNote.id !== prevActiveNoteIdRef.current) {
+    if (isStorageReady && editor && activeNote && activeNote.id !== prevActiveNoteIdRef.current) {
       editor.commands.setContent(normalizeNoteContent(activeNote.content), {
         emitUpdate: false,
         parseOptions: {
@@ -467,77 +423,93 @@ export default function NotepadClient() {
         },
       })
       prevActiveNoteIdRef.current = activeNote.id
+      if (focusNewNote.current) {
+        focusNewNote.current = false
+        editor.commands.focus("start")
+      }
     }
-  }, [activeNoteId, activeNote, editor])
+  }, [activeNoteId, activeNote, editor, isStorageReady])
 
-  const createNewNote = async () => {
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title: "New Note",
-      content: "",
-      lastModified: new Date(),
-    }
+  function addNote(note: Note) {
+    const previous = currentNotes.current.filter((existing) => existing.id !== starterId.current && existing.id !== note.id)
+    starterId.current = null
+    showNotes([note, ...previous])
+    setActiveNoteId(note.id)
+    const saved = saveBrowser(note)
+    if (transitioning.current) deferredFolderEdits.current.add(note.id)
+    else void writeFolder(note)
+    return saved
+  }
 
-    setNotes((prev) => [newNote, ...prev])
-    setActiveNoteId(newNote.id)
+  function createNewNote() {
+    if (transitioning.current) return
+    focusNewNote.current = true
+    setIsLibraryOpen(false)
+    addNote({ id: crypto.randomUUID(), title: "", content: "", lastModified: new Date() })
+  }
 
-    if (connectedDirectoryName) {
-      void saveNoteToDirectory(newNote, true)
+  function updateNote(id: string, changes: Partial<Pick<Note, "content" | "title">>) {
+    const existing = currentNotes.current.find((note) => note.id === id)
+    if (!existing) return
+    if (starterId.current === id) starterId.current = null
+    const updated = { ...existing, ...changes, lastModified: new Date() }
+    showNotes(currentNotes.current.map((note) => note.id === id ? updated : note))
+    saveBrowser(updated, changes)
+    if (transitioning.current) {
+      deferredFolderEdits.current.add(id)
+    } else {
+      if (changes.title !== undefined) void writeFolder(updated)
+      else scheduleFolderSave(updated)
     }
   }
 
-  const updateNote = (id: string, updates: Partial<Note>) => {
-    setNotes((prev) => prev.map((note) => {
-      if (note.id === id) {
-        const updatedNote = { ...note, ...updates, lastModified: new Date() }
-
-        // Sync to File System
-        if (connectedDirectoryName) {
-          // Check for rename
-          if (typeof updates.title === "string" && updates.title !== note.title) {
-            // saveNote moves the underlying file and cleans up the old one,
-            // so a rename is just an immediate save.
-            void saveNoteToDirectory(updatedNote, false)
-          } else if (Object.prototype.hasOwnProperty.call(updates, "content")) {
-            // Debounce content saves, keyed per note so switching notes mid-edit
-            // doesn't drop a pending save.
-            scheduleFolderSave(updatedNote)
-          }
-        }
-
-        return updatedNote
+  async function deleteNote(id: string) {
+    if (transitioning.current) return
+    transitioning.current = true
+    editor?.setEditable(false, false)
+    setFolderBusy(true)
+    try {
+      notebook.current.check(localStorage)
+      cancelFolderTimer(id)
+      const destination = folder.current
+      if (destination && destination.ids.has(id)) {
+        // The adapter orders a confirmed deletion after any already-submitted
+        // write, and refuses it if the file changed externally.
+        await fileSystemStorage.deleteNote(destination.ids.get(id)!)
+        destination.ids.delete(id)
+        destination.linked.delete(id)
       }
-      return note
-    }))
+      notebook.current.remove(localStorage, id)
+      const remaining = currentNotes.current.filter((note) => note.id !== id)
+      showNotes(remaining)
+      setActiveNoteId((previous) => previous === id ? remaining[0]?.id ?? null : previous)
+      setStorageError(null)
+    } catch (error) {
+      if (notebook.current.warning || error instanceof DOMException && error.name === "QuotaExceededError") storageFailure(error)
+      else setFolderSyncNotice("Could not finish deleting the note. Its current contents remain available here.")
+    } finally {
+      finishTransition()
+    }
   }
 
-  const deleteNote = (id: string) => {
-    if (connectedDirectoryName) {
-      void deleteNoteFromDirectory(id)
-    }
-
-    setNotes((prev) => {
-      const filtered = prev.filter((note) => note.id !== id)
-      if (activeNoteId === id && filtered.length > 0) {
-        setActiveNoteId(filtered[0].id)
-      } else if (filtered.length === 0) {
-        setActiveNoteId(null)
-      }
-      return filtered
-    })
+  function downloadFile(content: string, mime: string, filename: string) {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }))
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = filename
+    anchor.click()
+    URL.revokeObjectURL(url)
   }
 
   const exportNote = () => {
     if (!activeNote) return
     const content = richTextToPlainText(editor?.getHTML() || activeNote.content)
 
-    const blob = new Blob([content], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${activeNote.title}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadFile(content, "text/plain", `${activeNote.title.trim() || "Untitled"}.txt`)
+  }
+
+  function exportRichNote(note: Note) {
+    downloadFile(normalizeNoteContent(note.content), "text/plain", `${note.title.trim() || "Untitled"}.txt`)
   }
 
   const importFile = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -548,31 +520,27 @@ export default function NotepadClient() {
     reader.onload = (e) => {
       const content = e.target?.result as string
       const newNote: Note = {
-        id: Date.now().toString(),
+        id: crypto.randomUUID(),
         title: file.name.replace(/\.[^/.]+$/, ""),
         content: normalizeNoteContent(content),
         lastModified: new Date(),
       }
-      setNotes((prev) => [newNote, ...prev])
-      setActiveNoteId(newNote.id)
-
-      if (connectedDirectoryName) {
-        void saveNoteToDirectory(newNote, true)
-      }
+      addNote(newNote)
     }
     reader.readAsText(file)
+    event.target.value = ""
   }
 
-  const filteredNotes = notes.filter(
+  const filteredNotes = isLibraryOpen ? notes.filter(
     (note) =>
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       richTextToPlainText(note.content).toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-  const isSavingToFolder = Boolean(connectedDirectoryName)
+  ) : []
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isStorageReady || transitioning.current || isCreateLinkDialogOpen || isFeedbackDialogOpen || isConnectFolderDialogOpen || (mediaDialog && mediaDialog.noteId === activeNoteId) || noteToDelete) return
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
           case "n":
@@ -585,7 +553,9 @@ export default function NotepadClient() {
             break
           case "f":
             e.preventDefault()
-            document.getElementById("search-input")?.focus()
+            setIsDistractFree(false)
+            setIsLibraryOpen(true)
+            searchRef.current?.focus()
             break
         }
       }
@@ -597,518 +567,226 @@ export default function NotepadClient() {
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [activeNote, editor])
+  }, [isStorageReady, isCreateLinkDialogOpen, isFeedbackDialogOpen, isConnectFolderDialogOpen, mediaDialog, activeNoteId, noteToDelete, connectedDirectoryName])
+
+  const editorDetails = useEditorState({
+    editor,
+    selector: ({ editor: instance }) => {
+      let hasImages = false
+      instance?.state.doc.descendants((node) => {
+        if (node.type.name === "noteImage") hasImages = true
+        return !hasImages
+      })
+      return {
+        empty: instance?.isEmpty ?? true, hasImages,
+        words: instance?.storage.characterCount?.words() ?? 0,
+        characters: instance?.storage.characterCount?.characters() ?? 0,
+      }
+    },
+  })
+  const wordCount = editorDetails?.words ?? 0
+  const characterCount = editorDetails?.characters ?? 0
+  const hasImages = editorDetails?.hasImages ?? false
+  const otherUnsavedNotes = storageError
+    ? notes.filter((note) => note.id !== activeNoteId && unsavedNoteIds.current.has(note.id))
+    : []
 
   return (
-    <div
-      className={cn(
-        "min-h-[100dvh] overflow-x-hidden bg-background text-foreground transition-all duration-300",
-        isDistractFree && "overflow-hidden",
-      )}
-    >
-      {/* Header */}
-      {!isDistractFree && (
-        <header className="sticky top-0 z-10 border-b border-border bg-card/50 backdrop-blur-sm">
-          <div className="flex min-h-16 items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-              {/* Mobile hamburger menu button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-                className="h-9 w-9 shrink-0 p-0 md:hidden"
-                aria-label="Open notes sidebar"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <div className="flex min-w-0 items-center gap-2">
-                <FileText className="h-5 w-5 shrink-0 text-primary sm:h-6 sm:w-6" />
-                <h1 className="truncate text-lg font-bold text-primary sm:text-xl">NerdsNote</h1>
-              </div>
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search-input"
-                  placeholder="Search notes... (Ctrl+F)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsFeedbackDialogOpen(true)}
-                className="h-9 w-9 shrink-0 p-0 sm:w-auto sm:px-3"
-                aria-label="Send feedback"
-              >
-                <MessageSquare className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Feedback</span>
-              </Button>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-              {isFileSystemSupported && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (!connectedDirectoryName) {
-                      setIsConnectFolderDialogOpen(true)
-                    }
-                  }}
-                  className={cn(
-                    "hidden max-w-56 gap-2 border-border/70 bg-background/70 text-xs sm:flex",
-                    connectedDirectoryName && "border-primary/30 bg-primary/5 text-primary",
-                  )}
-                >
-                  {connectedDirectoryName ? (
-                    <FolderOpen className="h-4 w-4 shrink-0" />
-                  ) : (
-                    <HardDrive className="h-4 w-4 shrink-0" />
-                  )}
-                  <span className="truncate">
-                    {connectedDirectoryName ? `Saving to ${connectedDirectoryName}` : "Browser storage"}
-                  </span>
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsCreateLinkDialogOpen(true)}
-                className="h-9 px-2 font-medium text-primary sm:px-3"
-                disabled={!activeNote}
-                aria-label="Create share link"
-              >
-                <Link2 className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Create Link</span>
-              </Button>
-              <div className="hidden h-4 w-px bg-border sm:block" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsDistractFree(true)}
-                title="Enter focus mode"
-                aria-label="Enter focus mode"
-                className="h-9 w-9 gap-2 p-0 sm:w-auto sm:px-3"
-              >
-                <Maximize2 className="h-4 w-4" />
-                <span className="hidden lg:inline">Focus</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-                className="h-9 w-9 p-0 sm:w-auto sm:px-3"
-              >
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-            </div>
+    <div className="flex h-dvh min-h-0 flex-col bg-background text-foreground">
+      {isDistractFree ? (
+        <div className="flex justify-end px-4 py-3">
+          <Button variant="ghost" size="sm" onClick={() => setIsDistractFree(false)} className="text-muted-foreground" title="Exit focus mode (F11)">
+            <Minimize2 /> Exit focus
+          </Button>
+        </div>
+      ) : (
+        <header className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 sm:px-8">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-5">
+            <Link href="/" aria-label="NerdsNote home" className="flex items-center gap-2 text-foreground">
+              <NotebookPen className="size-5 text-primary" strokeWidth={1.6} />
+              <span className="hidden font-serif text-xl tracking-tight sm:inline">NerdsNote</span>
+            </Link>
+            <span aria-hidden="true" className="h-4 w-px bg-border" />
+            <Button ref={libraryTrigger} variant="ghost" size="sm" onClick={() => setIsLibraryOpen(true)} aria-haspopup="dialog">
+              <BookOpen /> Notes
+            </Button>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" aria-controls="editor-formatting" aria-expanded={isFormatOpen}
+              disabled={!activeNote || folderBusy} onClick={() => setIsFormatOpen(!isFormatOpen)} className={cn("text-muted-foreground", isFormatOpen && "bg-accent text-foreground")}>
+              <Type /> Format
+            </Button>
+            <Button variant="ghost" size="sm" aria-label="Enter focus mode" title="Enter focus mode (F11)"
+              disabled={!activeNote} onClick={() => setIsDistractFree(true)} className="text-muted-foreground">
+              <Maximize2 /><span className="hidden sm:inline">Focus</span>
+            </Button>
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" aria-label="More options" title="More options"><Ellipsis /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={createNewNote} disabled={!isStorageReady || folderBusy}><Plus /> New note</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setIsCreateLinkDialogOpen(true)} disabled={!activeNote}><Link2 /> Share note</DropdownMenuItem>
+                <DropdownMenuItem onSelect={exportNote} disabled={!activeNote}><Download /> Download text file</DropdownMenuItem>
+                {hasImages && activeNote && <DropdownMenuItem onSelect={() => exportRichNote(activeNote)}><Download /> Download note with images</DropdownMenuItem>}
+                <DropdownMenuItem onSelect={() => importRef.current?.click()} disabled={!isStorageReady || folderBusy}><Upload /> Import a file</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {isFileSystemSupported && (
+                  <DropdownMenuItem onSelect={() => setIsConnectFolderDialogOpen(true)} disabled={!isStorageReady || folderBusy}>
+                    <FolderOpen /> {connectedDirectoryName ? "Change folder" : "Connect a folder"}
+                  </DropdownMenuItem>
+                )}
+                {connectedDirectoryName && (
+                  <DropdownMenuItem onSelect={() => void handleDisconnectDirectory()}><X /> Disconnect folder</DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => setIsDarkMode(!isDarkMode)}>
+                  {isDarkMode ? <Sun /> : <Moon />} {isDarkMode ? "Light appearance" : "Dark appearance"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setIsFeedbackDialogOpen(true)}><MessageSquare /> Send feedback</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
       )}
 
-      <div className={cn(
-        "flex min-w-0",
-        isDistractFree ? "h-[100dvh]" : "h-[calc(100dvh-65px)] sm:h-[calc(100dvh-73px)]"
-      )}>
-        {/* Mobile Overlay */}
-        {!isDistractFree && isMobileSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-        )}
-
-        {/* Sidebar */}
-        {!isDistractFree && (
-          <aside className={cn(
-            "w-[min(20rem,calc(100vw-2rem))] border-r border-border bg-sidebar flex flex-col transition-transform duration-300 md:w-80",
-            "md:translate-x-0 md:static md:z-auto md:h-full",
-            isMobileSidebarOpen
-              ? "fixed inset-y-0 left-0 z-50 h-[100dvh] translate-x-0"
-              : "fixed inset-y-0 left-0 z-50 h-[100dvh] -translate-x-full"
-          )}>
-            <div className="p-4 border-b border-sidebar-border">
-              {/* Mobile close button */}
-              <div className="flex items-center justify-between mb-4 md:hidden">
-                <h2 className="text-lg font-semibold">NerdsNote</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Mobile search bar */}
-              <div className="relative mb-4 md:hidden">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search notes... (Ctrl+F)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={() => {
-                  createNewNote()
-                  setIsMobileSidebarOpen(false)
-                }} size="sm" className="flex-1">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Note
-                </Button>
-                <Button variant="outline" size="sm" onClick={exportNote} disabled={!activeNote}>
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <label>
-                    <Upload className="h-4 w-4" />
-                    <input type="file" accept=".txt,.md" onChange={importFile} className="hidden" />
-                  </label>
-                </Button>
-              </div>
-
-              {isFileSystemSupported && (
-                <Card
-                  className={cn(
-                    "mt-4 gap-3 rounded-md border-border/70 bg-background/70 p-3 shadow-none",
-                    isSavingToFolder && "border-primary/30 bg-primary/5",
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={cn(
-                        "mt-0.5 rounded-md bg-muted p-2 text-muted-foreground",
-                        isSavingToFolder && "bg-primary/10 text-primary",
-                      )}
-                    >
-                      {isSavingToFolder ? (
-                        <FolderOpen className="h-4 w-4" />
-                      ) : (
-                        <HardDrive className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">
-                        {isSavingToFolder ? "Storage: Local folder" : "Storage: Browser only"}
-                      </p>
-                      <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {isSavingToFolder
-                          ? `Saving to: ${connectedDirectoryName}`
-                          : "Notes are saved in this browser."}
-                      </p>
-                    </div>
-                  </div>
-
-                  {folderSyncNotice && (
-                    <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                      {folderSyncNotice}
-                    </p>
-                  )}
-
-                  {isSavingToFolder ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsConnectFolderDialogOpen(true)}
-                        className="h-8 text-xs"
-                      >
-                        Change folder
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDisconnectDirectory}
-                        className="h-8 text-xs text-muted-foreground"
-                      >
-                        Disconnect
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsConnectFolderDialogOpen(true)}
-                      className="h-8 w-full gap-2 border-primary/40 bg-primary/5 text-xs text-primary hover:bg-primary/10"
-                    >
-                      <HardDrive className="h-3.5 w-3.5" />
-                      Save to a local folder
-                    </Button>
-                  )}
-                </Card>
-              )}
-            </div>
-
-            <div className="flex-1 overflow-y-auto scrollbar-theme">
-              {filteredNotes.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">
-                  {searchQuery ? "No notes found" : "No notes yet"}
-                </div>
-              ) : (
-                <div className="p-2 space-y-2">
-                  {filteredNotes.map((note) => (
-                    <Card
-                      key={note.id}
-                      className={cn(
-                        "group p-3 cursor-pointer transition-colors hover:bg-accent/50",
-                        activeNoteId === note.id && "bg-accent text-accent-foreground",
-                      )}
-                      onClick={() => {
-                        setActiveNoteId(note.id)
-                        setIsMobileSidebarOpen(false)
-                      }}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium truncate text-sm">{note.title}</h3>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {notePreviewText(note.content) || "Empty note"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-2">{note.lastModified.toLocaleDateString()}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setNoteToDelete(note.id)
-                          }}
-                          className="ml-2 h-7 w-7 shrink-0 p-0 opacity-100 hover:bg-destructive hover:text-destructive-foreground sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
-                          aria-label={`Delete ${note.title}`}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </aside>
-        )}
-
-        {/* Main Editor Container */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {/* Main Editor */}
-          <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {activeNote ? (
-              <>
-                {!isDistractFree && (
-                  <div className="border-b border-border px-3 py-3 sm:p-4">
-                    <Input
-                      value={activeNote.title}
-                      onChange={(e) => updateNote(activeNote.id, { title: e.target.value })}
-                      className="border-none bg-transparent p-0 text-base font-medium focus-visible:ring-0 sm:text-lg"
-                      placeholder="Note title..."
-                    />
-                  </div>
-                )}
-
-                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                  <EditorToolbar
-                    editor={editor}
-                    fontSize={fontSize}
-                    onFontSizeChange={setFontSize}
-                    contained={isDistractFree}
-                    endContent={
-                      isDistractFree ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsDistractFree(false)}
-                          className="h-8 gap-2 bg-background/80"
-                          title="Exit focus mode (F11)"
-                          aria-label="Exit focus mode"
-                        >
-                          <Minimize2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Exit Focus Mode</span>
-                          <span className="sm:hidden">Exit</span>
-                        </Button>
-                      ) : undefined
-                    }
-                  />
-                  <div
-                    className={cn(
-                      "scrollbar-theme flex-1 overflow-x-hidden overflow-y-auto bg-transparent",
-                      isDistractFree && "mx-auto w-full max-w-3xl p-4 sm:p-8",
-                      !isDistractFree && "p-0"
-                    )}
-                    onClick={() => editor?.chain().focus().run()}
-                    style={{ fontSize: `${fontSize}px` }}
-                  >
-                    <EditorContent editor={editor} className="h-full min-h-[50vh]" />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 overflow-y-auto px-4 py-8 text-center sm:flex sm:items-center sm:justify-center">
-                <div className="max-w-xl px-4">
-                  <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h2 className="text-xl font-medium text-muted-foreground mb-2">Welcome to NerdsNote: Free Online Notepad for Note Taking</h2>
-                  <p className="text-muted-foreground mb-5">Create a new note to get started with this distraction-free online notepad. Perfect for quick notes, note taking, and private writing. No login required, works offline, and auto-saves to your browser.</p>
-                  <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-                    <Button onClick={createNewNote}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Your First Note
-                    </Button>
-                    {isFileSystemSupported && !connectedDirectoryName && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsConnectFolderDialogOpen(true)}
-                        className="gap-2 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
-                      >
-                        <HardDrive className="h-4 w-4" />
-                        Save notes to a local folder
-                      </Button>
-                    )}
-                  </div>
-                  {connectedDirectoryName && (
-                    <p className="mt-4 text-sm text-primary">
-                      New notes will save to {connectedDirectoryName}.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </main>
-
-          {/* Status Bar - Always visible at bottom */}
-          {activeNote && editor && (
-            <footer className="flex shrink-0 flex-col gap-1 border-t border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-4">
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <span>Words: {editor.storage.characterCount?.words() || 0}</span>
-                <span>Characters: {editor.storage.characterCount?.characters() || 0}</span>
-              </div>
-              <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 sm:justify-end">
-                {storageError && (
-                  <span className="text-destructive">{storageError}</span>
-                )}
-                <span className="min-w-0 truncate">{connectedDirectoryName ? `Saving to ${connectedDirectoryName}` : folderSyncNotice ? "Saved locally only" : "Auto-saved in browser"}</span>
-                <span className="whitespace-nowrap">Last modified: {activeNote.lastModified.toLocaleTimeString()}</span>
-              </div>
-            </footer>
+      <input ref={importRef} type="file" accept=".txt,.md" onChange={importFile} className="hidden" aria-label="Import a text or Markdown file" />
+      {(storageError || folderSyncNotice || shareImportNotice) && (
+        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 border-b border-border bg-muted px-4 py-2 text-sm">
+          {storageError && <span>{storageError}</span>}
+          {folderSyncNotice && <span>{folderSyncNotice}</span>}
+          {shareImportNotice && <span>{shareImportNotice}</span>}
+          {storageError && notebook.current.warning && notebook.current.source !== null && (
+            <button onClick={() => downloadFile(notebook.current.source!, "application/json", "nerdsnote-original.json")} className="font-medium underline">
+              Download original notebook
+            </button>
+          )}
+          {storageError && activeNote && (unsavedNoteIds.current.has(activeNote.id) || !otherUnsavedNotes.length) && (
+            <button onClick={hasImages ? () => exportRichNote(activeNote) : exportNote} className="font-medium underline">
+              {hasImages ? "Download note with images" : "Download note"}
+            </button>
+          )}
+          {otherUnsavedNotes.map((note) => (
+            <button key={note.id} onClick={() => exportRichNote(note)} className="font-medium underline">
+              Download {note.title || "untitled note"} backup
+            </button>
+          ))}
+          {folderSyncNotice && isFileSystemSupported && (
+            <button onClick={() => setIsConnectFolderDialogOpen(true)} className="font-medium underline">Reconnect folder</button>
           )}
         </div>
-      </div>
+      )}
+      {editor && activeNote && isStorageReady && (
+        <NoteImages key={activeNote.id} editor={editor} open={mediaDialog?.type === "image" && mediaDialog.noteId === activeNote.id}
+          onClose={() => setMediaDialog(null)} />
+      )}
+      {editor && activeNote && mediaDialog?.type === "chart" && mediaDialog.noteId === activeNote.id && (
+        <ChartDialog key={activeNote.id} editor={editor} onClose={() => setMediaDialog(null)} />
+      )}
+      {activeNote && isFormatOpen && !isDistractFree && !folderBusy && (
+        <div id="editor-formatting"><EditorToolbar editor={editor} fontSize={fontSize} onFontSizeChange={setFontSize} onImageAction={() => setMediaDialog({ noteId: activeNote.id, type: "image" })}
+          onChartAction={() => setMediaDialog({ noteId: activeNote.id, type: "chart" })} contained /></div>
+      )}
 
-
-      {/* Create Share Link Dialog */}
-      <CreateShareLinkDialog
-        isOpen={isCreateLinkDialogOpen}
-        onClose={() => setIsCreateLinkDialogOpen(false)}
-        noteContent={activeNote ? (editor?.getHTML() || activeNote.content) : ""}
-      />
-
-      {/* Feedback Dialog */}
-      <FeedbackDialog
-        isOpen={isFeedbackDialogOpen}
-        onClose={() => setIsFeedbackDialogOpen(false)}
-      />
-
-      {/* Connect Folder Dialog */}
-      <ConnectFolderDialog
-        isOpen={isConnectFolderDialogOpen}
-        onClose={() => setIsConnectFolderDialogOpen(false)}
-        onConfirm={handleConnectDirectory}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      {
-        noteToDelete && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-5 sm:p-6">
-              <h3 className="text-lg font-semibold mb-2">Delete Note</h3>
-              <p className="text-muted-foreground mb-4">
-                Are you sure you want to delete this note? This action cannot be undone.
-              </p>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setNoteToDelete(null)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    deleteNote(noteToDelete)
-                    setNoteToDelete(null)
-                  }}
-                >
-                  Delete
-                </Button>
-              </div>
-            </Card>
+      <main className="scrollbar-theme min-h-0 flex-1 overflow-y-auto" aria-label="Writing space">
+        {isStorageReady && (activeNote ? (
+          <div className="mx-auto w-full max-w-[47rem] px-6 pt-[clamp(3rem,9vh,7rem)] pb-16 sm:px-12">
+            <input
+              aria-label="Note title"
+              readOnly={folderBusy}
+              value={activeNote.title}
+              onChange={(event) => updateNote(activeNote.id, { title: event.target.value })}
+              placeholder="Untitled"
+              className="block w-full min-w-0 rounded-none border-0 bg-transparent p-0 font-serif text-[clamp(2.35rem,5vw,3.4rem)] leading-tight tracking-tight text-foreground outline-none placeholder:text-muted-foreground/80"
+            />
+            <div className="relative mt-6">
+              {editorDetails?.empty && (
+                <span aria-hidden="true" className="pointer-events-none absolute top-0 font-serif leading-[1.8] text-muted-foreground" style={{ fontSize }}>
+                  Start writing…
+                </span>
+              )}
+              <EditorContent editor={editor} style={{ fontSize }} />
+            </div>
           </div>
-        )
-      }
-
-      {/* Feature Announcement Modal */}
-      {
-        showAnnouncement && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center sm:p-4">
-            <Card className="max-h-[calc(100dvh-1.5rem)] w-full max-w-md overflow-y-auto rounded-md p-5 animate-in fade-in zoom-in-95 duration-200 sm:p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold">New Features: Share & Save!</h3>
-              </div>
-              <p className="text-sm text-muted-foreground mb-6">
-                We've added powerful new features to give you full control over your data.
-              </p>
-              <div className="space-y-6 mb-8">
-                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
-                  <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
-                    <Link2 className="h-4 w-4" />
-                    Share Links
-                  </h4>
-                  <p className="text-sm text-foreground/80 leading-relaxed mb-2">
-                    Need to share a quick thought? Generate a secure, read-only public link for any note.
-                  </p>
-                  <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
-                    <li>Click "Create Link" in the top bar</li>
-                    <li>You choose when links expire (up to 30 days)</li>
-                  </ul>
-                </div>
-
-                <div className="bg-muted/30 p-3 rounded-lg border border-border/50">
-                  <h4 className="font-semibold flex items-center gap-2 mb-2 text-primary">
-                    <HardDrive className="h-4 w-4" />
-                    Local Folder Storage
-                    <span className="text-[10px] uppercase font-bold bg-background text-muted-foreground px-1.5 py-0.5 rounded border border-border ml-auto">Desktop Only</span>
-                  </h4>
-                  <p className="text-sm text-foreground/80 leading-relaxed mb-2">
-                    Prevent data loss by connecting a real folder on your device. Your notes will be saved as .txt files.
-                  </p>
-                  <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1 ml-1">
-                    <li>Click "Connect Local Folder" in the sidebar</li>
-                    <li>Files auto-sync instantly</li>
-                  </ul>
-                </div>
-              </div>
-              <Button
-                className="w-full font-semibold"
-                onClick={() => {
-                  localStorage.setItem("nerds-note-seen-v6-features", "true")
-                  setShowAnnouncement(false)
-                }}
-              >
-                Awesome, Let's Go!
-              </Button>
-            </Card>
+        ) : (
+          <div className="mx-auto flex max-w-[47rem] flex-col items-start px-6 pt-[clamp(4rem,14vh,9rem)] sm:px-12">
+            <BookOpen className="mb-5 size-7 text-primary" strokeWidth={1.4} />
+            <h1 className="font-serif text-4xl tracking-tight">{notebook.current.warning ? "Your stored notebook needs attention." : "Your notebook is empty."}</h1>
+            <p className="mt-3 text-sm text-muted-foreground">{notebook.current.warning ? "New writing stays in this session. Download a copy before closing the page." : "Create a note or open a text file to begin."}</p>
+            <div className="mt-7 flex flex-wrap gap-2">
+              <Button onClick={createNewNote}><Plus /> New note</Button>
+              <Button variant="ghost" onClick={() => importRef.current?.click()}><Upload /> Import a file</Button>
+            </div>
           </div>
-        )
-      }
+        ))}
+      </main>
 
-    </div >
+      {isStorageReady && activeNote && !isDistractFree && (
+        <footer className="flex min-h-12 shrink-0 items-center justify-between gap-3 border-t border-border/60 px-4 py-2 text-xs text-muted-foreground sm:px-8">
+          <span className="truncate">{storageError ? "Browser save unavailable" : connectedDirectoryName && folder.current?.linked.has(activeNote.id) ? `Folder · ${connectedDirectoryName}` : notebook.current.containsSaved(activeNote.id) ? "Saved in this browser" : starterId.current === activeNote.id ? "Saves in this browser" : "Available in this session"}</span>
+          <span className="shrink-0 tabular-nums" title={`${characterCount} characters · Edited ${activeNote.lastModified.toLocaleString()}`}>
+            {wordCount} {wordCount === 1 ? "word" : "words"}<span className="hidden sm:inline"> · {characterCount} characters</span>
+          </span>
+        </footer>
+      )}
+
+      <Dialog.Root open={isLibraryOpen} onOpenChange={setIsLibraryOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-30 bg-black/15" />
+          <Dialog.Content aria-describedby={undefined}
+            onOpenAutoFocus={(event) => { event.preventDefault(); searchRef.current?.focus() }}
+            onCloseAutoFocus={(event) => { event.preventDefault(); if (focusNewNote.current) editor?.commands.focus(); else libraryTrigger.current?.focus() }}
+            className="fixed inset-y-0 left-0 z-40 flex w-[min(23rem,calc(100vw-2rem))] flex-col border-r border-border bg-sidebar text-sidebar-foreground outline-none">
+            <div className="flex items-center justify-between px-5 py-4">
+              <Dialog.Title className="font-serif text-2xl">Your notes</Dialog.Title>
+              <Dialog.Close asChild><Button size="icon" variant="ghost" aria-label="Close notes"><X /></Button></Dialog.Close>
+            </div>
+            <div className="px-5 pb-4">
+              <div className="relative mb-3">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <input type="search" ref={searchRef} aria-label="Search notes" placeholder="Search notes" value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background pr-3 pl-9 text-sm focus-visible:outline-ring" />
+              </div>
+              <Button onClick={createNewNote} disabled={!isStorageReady || folderBusy} className="w-full"><Plus /> New note</Button>
+            </div>
+            <div className="scrollbar-theme flex-1 overflow-y-auto border-t border-border/70 px-3 py-2">
+              {filteredNotes.length === 0 && <p className="px-3 py-5 text-sm text-muted-foreground">{searchQuery ? "No matching notes." : "No notes yet."}</p>}
+              {filteredNotes.map((note) => (
+                <div key={note.id} className={cn("group my-1 flex items-center rounded-md hover:bg-accent/55", activeNoteId === note.id && "bg-accent")}>
+                  <button type="button" onClick={() => { setActiveNoteId(note.id); setIsLibraryOpen(false) }}
+                    aria-current={activeNoteId === note.id ? "true" : undefined} className="min-w-0 flex-1 px-3 py-3 text-left">
+                    <span className="block truncate font-serif text-lg">{note.title || "Untitled"}</span>{" "}
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">{notePreviewText(note.content) || "Empty note"}</span>
+                  </button>
+                  <Button variant="ghost" size="icon" aria-label={`Delete ${note.title || "untitled note"}`}
+                    disabled={folderBusy} onClick={() => setNoteToDelete(note.id)} className="mr-1 text-muted-foreground sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+                    <Trash2 />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <CreateShareLinkDialog isOpen={isCreateLinkDialogOpen} onClose={() => setIsCreateLinkDialogOpen(false)}
+        noteContent={isCreateLinkDialogOpen && activeNote ? (editor?.getHTML() ?? normalizeNoteContent(activeNote.content)) : ""} />
+      <FeedbackDialog isOpen={isFeedbackDialogOpen} onClose={() => setIsFeedbackDialogOpen(false)} />
+      <ConnectFolderDialog isOpen={isConnectFolderDialogOpen} onClose={() => setIsConnectFolderDialogOpen(false)} defaultCopyExisting={!folderSyncNotice && !connectedDirectoryName} onConfirm={handleConnectDirectory} />
+      <AlertDialog.Root open={noteToDelete !== null} onOpenChange={(open) => { if (!open) setNoteToDelete(null) }}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/25" />
+          <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(26rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card p-6">
+            <AlertDialog.Title className="font-serif text-2xl">Delete this note?</AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 text-sm text-muted-foreground">
+              This permanently removes the note{connectedDirectoryName ? " and its connected file" : " from this browser"}.
+            </AlertDialog.Description>
+            <div className="mt-6 flex justify-end gap-2">
+              <AlertDialog.Cancel asChild><Button variant="outline">Cancel</Button></AlertDialog.Cancel>
+              <AlertDialog.Action asChild><Button variant="destructive" onClick={() => { if (noteToDelete) deleteNote(noteToDelete) }}>Delete note</Button></AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+    </div>
   )
 }
